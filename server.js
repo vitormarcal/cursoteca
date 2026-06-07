@@ -207,13 +207,20 @@ function parseMultipart(buffer, boundary) {
     const disposition = rawHeaders
       .split('\r\n')
       .find((line) => line.toLowerCase().startsWith('content-disposition:')) || '';
-    const name = /name="([^"]+)"/.exec(disposition)?.[1] || '';
-    const filename = /filename="([^"]*)"/.exec(disposition)?.[1] || '';
+    const name = decodeLatin1HeaderValue(/name="([^"]+)"/.exec(disposition)?.[1] || '');
+    const encodedFilename = /filename\*=UTF-8''([^;\r\n]+)/i.exec(disposition)?.[1];
+    const filename = encodedFilename
+      ? decodeURIComponent(encodedFilename)
+      : decodeLatin1HeaderValue(/filename="([^"]*)"/.exec(disposition)?.[1] || '');
 
     parts.push({ name, filename, content });
   }
 
   return parts;
+}
+
+function decodeLatin1HeaderValue(value) {
+  return Buffer.from(value, 'latin1').toString('utf8');
 }
 
 async function uniqueFilePath(folderPath, fileName) {
