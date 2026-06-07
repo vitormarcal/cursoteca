@@ -338,6 +338,26 @@ a:focus-visible {
   margin-top: 16px;
 }
 
+.player-inline-panel {
+  margin-top: 14px;
+}
+
+.player-inline-panel:empty {
+  display: none;
+}
+
+.player-inline-panel .form,
+.player-inline-panel .metadata-form {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.player-inline-panel .player-form {
+  max-width: none;
+}
+
 .video-links a {
   min-height: 34px;
   border: 1px solid var(--line);

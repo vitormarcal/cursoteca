@@ -47,6 +47,7 @@ const openManage = document.querySelector('#open-manage');
 const actionList = document.querySelector('#action-list');
 const managedForms = [...document.querySelectorAll('.managed-form')];
 const contextActions = document.querySelector('#context-actions');
+const librarySectionHeading = document.querySelector('.section-heading');
 
 let currentDir = '';
 let courses = [];
@@ -284,6 +285,7 @@ function actionDefinitions() {
 
 function renderActionList(preferred = activeAction, forceOpen = false) {
   const actions = actionDefinitions();
+  contextActions.hidden = playerOpen;
   actionList.replaceChildren();
   for (const action of actions) {
     const button = document.createElement('button');
@@ -330,6 +332,7 @@ function configureAction(actionId) {
 }
 
 function setActiveAction(actionId) {
+  restoreManagedForms();
   activeAction = actionId;
   const action = actionDefinitions().find((item) => item.id === actionId);
   for (const form of managedForms) {
@@ -343,6 +346,7 @@ function setActiveAction(actionId) {
 }
 
 function openManagePanel() {
+  if (playerOpen) return;
   manageTab.classList.add('active');
   libraryTab.classList.add('active');
   renderActionList(activeAction, true);
@@ -352,6 +356,13 @@ function openManagePanel() {
 function closeManagePanel() {
   manageTab.classList.remove('active');
   libraryTab.classList.add('active');
+}
+
+function restoreManagedForms() {
+  for (const form of managedForms) {
+    form.classList.remove('player-form');
+    if (form.parentElement !== contextActions) contextActions.append(form);
+  }
 }
 
 function renderBreadcrumb(current) {
@@ -386,6 +397,7 @@ function listingTitle() {
 }
 
 function renderListing(listing) {
+  restoreManagedForms();
   const directories = listing.directories || [];
   const files = listing.files || [];
   currentDir = listing.current || '';
@@ -398,6 +410,7 @@ function renderListing(listing) {
   renderActionList();
   renderBreadcrumb(currentDir);
   updateCourseDescription();
+  librarySectionHeading.hidden = false;
   nowPlaying.hidden = true;
   nowPlaying.replaceChildren();
 
@@ -551,10 +564,12 @@ function initials(value) {
 }
 
 function renderPlayer(file) {
+  restoreManagedForms();
   nowPlaying.hidden = false;
   nowPlaying.replaceChildren();
   selectedLesson = file;
   playerOpen = true;
+  librarySectionHeading.hidden = true;
   pdfScopeSelect.value = 'lesson';
   resourceScopeSelect.value = 'lesson';
   updateLessonTargets();
@@ -592,24 +607,22 @@ function renderPlayer(file) {
   const actions = document.createElement('div');
   actions.className = 'player-actions';
 
+  const inlinePanel = document.createElement('div');
+  inlinePanel.className = 'player-inline-panel';
+
   const open = document.createElement('a');
   open.className = 'secondary-action';
   open.href = fileHref(file.path);
   open.target = '_blank';
   open.rel = 'noreferrer';
-  open.textContent = 'Abrir arquivo';
+  open.textContent = 'Abrir';
 
   const edit = document.createElement('button');
   edit.type = 'button';
   edit.className = 'secondary-action';
   edit.textContent = 'Editar detalhes';
   edit.addEventListener('click', () => {
-    const existing = nowPlaying.querySelector('.metadata-form');
-    if (existing) {
-      existing.hidden = !existing.hidden;
-      return;
-    }
-    details.append(createMetadataEditor(file));
+    showPlayerMetadataEditor(inlinePanel, file);
   });
 
   const attachPdf = document.createElement('button');
@@ -617,21 +630,27 @@ function renderPlayer(file) {
   attachPdf.className = 'secondary-action';
   attachPdf.textContent = 'Anexar PDF';
   attachPdf.addEventListener('click', () => {
-    openManagePanel();
-    setActiveAction('pdf-lesson');
+    showPlayerManagedForm(inlinePanel, 'pdf-lesson');
   });
 
   const attachLink = document.createElement('button');
   attachLink.type = 'button';
   attachLink.className = 'secondary-action';
-  attachLink.textContent = 'Adicionar link';
+  attachLink.textContent = 'Link';
   attachLink.addEventListener('click', () => {
-    openManagePanel();
-    setActiveAction('link-lesson');
+    showPlayerManagedForm(inlinePanel, 'link-lesson');
   });
 
-  actions.append(attachPdf, attachLink, edit, open);
-  details.append(label, title, meta, description, renderLinks(file), actions);
+  const uploadFile = document.createElement('button');
+  uploadFile.type = 'button';
+  uploadFile.className = 'secondary-action';
+  uploadFile.textContent = 'Enviar arquivo';
+  uploadFile.addEventListener('click', () => {
+    showPlayerManagedForm(inlinePanel, 'video');
+  });
+
+  actions.append(attachPdf, attachLink, edit, uploadFile, open);
+  details.append(label, title, meta, description, renderLinks(file), actions, inlinePanel);
 
   lessonMain.append(video, details);
   stage.append(lessonMain, createLessonSidebar(file));
@@ -639,6 +658,27 @@ function renderPlayer(file) {
   appendIfPresent(nowPlaying, renderResourceGroups(file));
   renderListingFiles(lastListing || { directories: [], files: [] });
   nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showPlayerManagedForm(container, actionId) {
+  container.replaceChildren();
+  setActiveAction(actionId);
+  const action = actionDefinitions().find((item) => item.id === actionId);
+  const form = action ? document.getElementById(action.formId) : null;
+  if (!form) return;
+  form.hidden = false;
+  form.classList.add('contextual-form', 'player-form');
+  container.append(form);
+}
+
+function showPlayerMetadataEditor(container, file) {
+  const existing = container.querySelector('.metadata-form');
+  if (existing) {
+    existing.hidden = !existing.hidden;
+    return;
+  }
+  restoreManagedForms();
+  container.replaceChildren(createMetadataEditor(file));
 }
 
 function createLessonSidebar(activeFile) {
