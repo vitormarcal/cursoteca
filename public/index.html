@@ -81,6 +81,27 @@
           <p id="course-status" class="status" role="status" aria-live="polite"></p>
         </form>
 
+        <form id="node-form" class="form" autocomplete="off">
+          <h3>Criar unidade</h3>
+          <label for="nodeCourse">Curso</label>
+          <select id="nodeCourse" name="nodeCourse" required></select>
+
+          <label for="nodeParentFolder">Dentro de</label>
+          <input id="nodeParentFolder" name="nodeParentFolder" type="text" placeholder="Etapa 1 - Fundação">
+
+          <label for="nodeType">Tipo</label>
+          <input id="nodeType" name="nodeType" type="text" required placeholder="Etapa, Módulo, Capítulo">
+
+          <label for="nodeTitle">Nome</label>
+          <input id="nodeTitle" name="nodeTitle" type="text" required placeholder="Módulo 01">
+
+          <label for="nodeDescription">Descrição</label>
+          <textarea id="nodeDescription" name="nodeDescription" rows="3" placeholder="Notas desta unidade"></textarea>
+
+          <button id="node-button" type="submit">Criar unidade</button>
+          <p id="node-status" class="status" role="status" aria-live="polite"></p>
+        </form>
+
         <form id="download-form" class="form" autocomplete="off">
           <h3>Baixar aula</h3>
           <label for="course">Curso</label>
@@ -99,6 +120,27 @@
           <p id="status" class="status" role="status" aria-live="polite"></p>
         </form>
 
+        <form id="video-form" class="form" enctype="multipart/form-data">
+          <h3>Enviar vídeo</h3>
+          <label for="videoCourse">Curso</label>
+          <select id="videoCourse" name="videoCourse" required></select>
+
+          <label for="videoFolder">Unidade da aula</label>
+          <input id="videoFolder" name="videoFolder" type="text" required placeholder="Etapa 1/Módulo 01">
+
+          <label for="videoTitle">Nome da aula</label>
+          <input id="videoTitle" name="videoTitle" type="text" placeholder="Aula 01 - Sons básicos">
+
+          <label for="videoDescription">Descrição</label>
+          <textarea id="videoDescription" name="videoDescription" rows="3" placeholder="Notas desta aula"></textarea>
+
+          <label for="videoFile">Arquivo MP4</label>
+          <input id="videoFile" name="videoFile" type="file" accept="video/mp4,.mp4" required>
+
+          <button id="video-button" type="submit">Enviar vídeo</button>
+          <p id="video-status" class="status" role="status" aria-live="polite"></p>
+        </form>
+
         <form id="pdf-form" class="form" enctype="multipart/form-data">
           <h3>Anexar PDFs</h3>
           <label for="pdfCourse">Curso</label>
@@ -107,11 +149,52 @@
           <label for="pdfFolder">Pasta dos PDFs</label>
           <input id="pdfFolder" name="pdfFolder" type="text" placeholder="Capítulo 4 - Sintaxe">
 
+          <label for="pdfScope">Esse PDF pertence a</label>
+          <select id="pdfScope" name="pdfScope">
+            <option value="node">Unidade atual</option>
+            <option value="lesson">Aula específica</option>
+            <option value="course">Curso inteiro</option>
+          </select>
+
+          <label for="pdfLessonPath">Arquivo da aula</label>
+          <input id="pdfLessonPath" name="pdfLessonPath" type="text" placeholder="Curso/Módulo/Aula 01.mp4">
+
           <label for="pdfFiles">PDFs da aula</label>
           <input id="pdfFiles" name="pdfFiles" type="file" accept="application/pdf,.pdf" multiple required>
 
           <button id="pdf-button" type="submit">Adicionar PDFs</button>
           <p id="pdf-status" class="status" role="status" aria-live="polite"></p>
+        </form>
+
+        <form id="resource-form" class="form" autocomplete="off">
+          <h3>Adicionar link</h3>
+          <label for="resourceCourse">Curso</label>
+          <select id="resourceCourse" name="resourceCourse" required></select>
+
+          <label for="resourceFolder">Unidade</label>
+          <input id="resourceFolder" name="resourceFolder" type="text" placeholder="Etapa 1/Módulo 01">
+
+          <label for="resourceScope">Esse link pertence a</label>
+          <select id="resourceScope" name="resourceScope">
+            <option value="node">Unidade atual</option>
+            <option value="lesson">Aula específica</option>
+            <option value="course">Curso inteiro</option>
+          </select>
+
+          <label for="resourceLessonPath">Arquivo da aula</label>
+          <input id="resourceLessonPath" name="resourceLessonPath" type="text" placeholder="Curso/Módulo/Aula 01.mp4">
+
+          <label for="resourceTitle">Título</label>
+          <input id="resourceTitle" name="resourceTitle" type="text" placeholder="Exercícios complementares">
+
+          <label for="resourceUrl">URL</label>
+          <input id="resourceUrl" name="resourceUrl" type="url" required placeholder="https://...">
+
+          <label for="resourceDescription">Descrição</label>
+          <textarea id="resourceDescription" name="resourceDescription" rows="3" placeholder="Observações sobre o link"></textarea>
+
+          <button id="resource-button" type="submit">Adicionar link</button>
+          <p id="resource-status" class="status" role="status" aria-live="polite"></p>
         </form>
       </aside>
     </div>

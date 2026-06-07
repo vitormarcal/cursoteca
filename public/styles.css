@@ -336,6 +336,55 @@ a:focus-visible {
   font-weight: 800;
 }
 
+.resource-groups {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.resource-shelf {
+  display: grid;
+  gap: 8px;
+}
+
+.resource-shelf h3 {
+  margin: 0;
+  color: #303746;
+  font-size: 0.92rem;
+}
+
+.resource-list {
+  display: grid;
+  gap: 8px;
+}
+
+.resource-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+.resource-link span {
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: #fee4df;
+  color: #b42318;
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.resource-link strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
 .library {
   margin-top: 32px;
 }

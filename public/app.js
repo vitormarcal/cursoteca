@@ -1,20 +1,37 @@
 const form = document.querySelector('#download-form');
 const pdfForm = document.querySelector('#pdf-form');
 const courseForm = document.querySelector('#course-form');
+const nodeForm = document.querySelector('#node-form');
+const resourceForm = document.querySelector('#resource-form');
+const videoForm = document.querySelector('#video-form');
 const submitButton = document.querySelector('#submit-button');
 const pdfButton = document.querySelector('#pdf-button');
 const courseButton = document.querySelector('#course-button');
+const nodeButton = document.querySelector('#node-button');
+const resourceButton = document.querySelector('#resource-button');
+const videoButton = document.querySelector('#video-button');
 const refreshButton = document.querySelector('#refresh-button');
 const statusEl = document.querySelector('#status');
 const pdfStatusEl = document.querySelector('#pdf-status');
 const courseStatusEl = document.querySelector('#course-status');
+const nodeStatusEl = document.querySelector('#node-status');
+const resourceStatusEl = document.querySelector('#resource-status');
+const videoStatusEl = document.querySelector('#video-status');
 const fileList = document.querySelector('#file-list');
 const breadcrumb = document.querySelector('#breadcrumb');
 const courseDescriptionEl = document.querySelector('#course-description');
 const courseSelect = document.querySelector('#course');
 const pdfCourseSelect = document.querySelector('#pdfCourse');
+const nodeCourseSelect = document.querySelector('#nodeCourse');
+const resourceCourseSelect = document.querySelector('#resourceCourse');
+const videoCourseSelect = document.querySelector('#videoCourse');
 const lessonFolderInput = document.querySelector('#lessonFolder');
 const pdfFolderInput = document.querySelector('#pdfFolder');
+const nodeParentFolderInput = document.querySelector('#nodeParentFolder');
+const resourceFolderInput = document.querySelector('#resourceFolder');
+const videoFolderInput = document.querySelector('#videoFolder');
+const pdfLessonPathInput = document.querySelector('#pdfLessonPath');
+const resourceLessonPathInput = document.querySelector('#resourceLessonPath');
 const pageTitle = document.querySelector('#page-title');
 const libraryHeading = document.querySelector('#library-heading');
 const courseCount = document.querySelector('#course-count');
@@ -67,7 +84,7 @@ function isPdf(file) {
 }
 
 function selectedCourse() {
-  return courseSelect.value || pdfCourseSelect.value || courses[0]?.name || '';
+  return courseSelect.value || pdfCourseSelect.value || nodeCourseSelect.value || resourceCourseSelect.value || videoCourseSelect.value || courses[0]?.name || '';
 }
 
 function normalizeCourse(course) {
@@ -97,6 +114,10 @@ function setCourses(nextCourses) {
 }
 
 function updateCourseDescription() {
+  if (lastListing?.context?.node?.description) {
+    courseDescriptionEl.textContent = lastListing.context.node.description;
+    return;
+  }
   if (!currentDir) {
     courseDescriptionEl.textContent = '';
     return;
@@ -118,7 +139,7 @@ function setSelectValue(select, value) {
 }
 
 function renderCourseOptions(preferred = selectedCourse()) {
-  for (const select of [courseSelect, pdfCourseSelect]) {
+  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
     select.replaceChildren();
     if (!courses.length) {
       const option = document.createElement('option');
@@ -143,17 +164,26 @@ function renderCourseOptions(preferred = selectedCourse()) {
 function syncFormsWithDirectory() {
   const parts = currentDir.split('/').filter(Boolean);
   if (parts.length) {
-    setSelectValue(courseSelect, parts[0]);
-    setSelectValue(pdfCourseSelect, parts[0]);
-    lessonFolderInput.value = parts.slice(1).join('/');
-    pdfFolderInput.value = parts.slice(1).join('/');
+    for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
+      setSelectValue(select, parts[0]);
+    }
+    const folder = parts.slice(1).join('/');
+    lessonFolderInput.value = folder;
+    pdfFolderInput.value = folder;
+    nodeParentFolderInput.value = folder;
+    resourceFolderInput.value = folder;
+    videoFolderInput.value = folder;
     return;
   }
   const course = selectedCourse();
-  setSelectValue(courseSelect, course);
-  setSelectValue(pdfCourseSelect, course);
+  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
+    setSelectValue(select, course);
+  }
   lessonFolderInput.value = '';
   pdfFolderInput.value = '';
+  nodeParentFolderInput.value = '';
+  resourceFolderInput.value = '';
+  videoFolderInput.value = '';
 }
 
 function openManagePanel() {
@@ -295,7 +325,8 @@ function createDirectoryCard(directory) {
   title.textContent = directory.name;
 
   const meta = document.createElement('span');
-  meta.textContent = course?.description || `Atualizado em ${formatDate(directory.modifiedAt)}`;
+  const nodeLabel = directory.node?.typeLabel ? `${directory.node.typeLabel} · ` : '';
+  meta.textContent = directory.node?.description || course?.description || `${nodeLabel}Atualizado em ${formatDate(directory.modifiedAt)}`;
 
   button.append(art, title, meta);
   return button;
@@ -355,6 +386,8 @@ function initials(value) {
 function renderPlayer(file) {
   nowPlaying.hidden = false;
   nowPlaying.replaceChildren();
+  pdfLessonPathInput.value = file.path;
+  resourceLessonPathInput.value = file.path;
 
   const video = document.createElement('video');
   video.controls = true;
@@ -377,7 +410,7 @@ function renderPlayer(file) {
 
   const description = document.createElement('p');
   description.className = 'video-description';
-  description.textContent = file.metadata?.description || 'Sem descrição salva para esta aula.';
+  description.textContent = file.lesson?.description || file.metadata?.description || 'Sem descrição salva para esta aula.';
 
   const actions = document.createElement('div');
   actions.className = 'player-actions';
@@ -403,9 +436,70 @@ function renderPlayer(file) {
   });
 
   actions.append(open, edit);
-  details.append(label, title, meta, description, renderLinks(file), actions);
+  details.append(label, title, meta, description, renderLinks(file), renderResourceGroups(file), actions);
   nowPlaying.append(video, details);
   nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderResourceGroups(file) {
+  const groups = file.resourceGroups || {};
+  const wrapper = document.createElement('div');
+  wrapper.className = 'resource-groups';
+
+  const lessonResources = groups.lesson || [];
+  const nodeResources = groups.node || [];
+  const ancestorGroups = groups.ancestors || [];
+  const courseResources = groups.course || [];
+
+  if (lessonResources.length) {
+    wrapper.append(createResourceShelf('Material desta aula', lessonResources));
+  }
+
+  if (nodeResources.length) {
+    wrapper.append(createResourceShelf('Outros materiais desta unidade', nodeResources));
+  }
+
+  for (const group of ancestorGroups) {
+    wrapper.append(createResourceShelf(`Materiais de ${group.node.typeLabel || 'unidade'}: ${group.node.title}`, group.resources || []));
+  }
+
+  if (courseResources.length) {
+    wrapper.append(createResourceShelf('Materiais do curso', courseResources));
+  }
+
+  return wrapper;
+}
+
+function createResourceShelf(title, resources) {
+  const section = document.createElement('section');
+  section.className = 'resource-shelf';
+
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+
+  const list = document.createElement('div');
+  list.className = 'resource-list';
+  list.append(...resources.map(createResourceLink));
+
+  section.append(heading, list);
+  return section;
+}
+
+function createResourceLink(resource) {
+  const link = document.createElement('a');
+  link.className = 'resource-link';
+  link.href = resource.type === 'file' ? fileHref(resource.path) : resource.url;
+  link.target = '_blank';
+  link.rel = 'noreferrer';
+
+  const badge = document.createElement('span');
+  badge.textContent = resource.type === 'file' ? 'PDF' : 'LINK';
+
+  const title = document.createElement('strong');
+  title.textContent = resource.title || resource.url || cleanTitle(resource.path || '');
+
+  link.append(badge, title);
+  return link;
 }
 
 function renderLinks(file) {
@@ -564,6 +658,29 @@ courseForm.addEventListener('submit', async (event) => {
   }
 });
 
+nodeForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  nodeButton.disabled = true;
+  setStatus(nodeStatusEl, 'Criando...');
+  try {
+    const response = await fetch('/api/nodes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(new FormData(nodeForm))
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Falha ao criar unidade.');
+    renderListing(data.listing || { current: currentDir, directories: [], files: [] });
+    setStatus(nodeStatusEl, data.message || 'Unidade criada.');
+    nodeForm.reset();
+    syncFormsWithDirectory();
+  } catch (error) {
+    setStatus(nodeStatusEl, error.message, true);
+  } finally {
+    nodeButton.disabled = false;
+  }
+});
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   submitButton.disabled = true;
@@ -584,6 +701,28 @@ form.addEventListener('submit', async (event) => {
     setStatus(statusEl, error.message, true);
   } finally {
     submitButton.disabled = false;
+  }
+});
+
+videoForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  videoButton.disabled = true;
+  setStatus(videoStatusEl, 'Enviando...');
+  try {
+    const response = await fetch('/api/upload-video', {
+      method: 'POST',
+      body: new FormData(videoForm)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Falha ao enviar video.');
+    renderListing(data.listing || { current: currentDir, directories: [], files: [] });
+    setStatus(videoStatusEl, data.message || 'Video enviado.');
+    videoForm.reset();
+    syncFormsWithDirectory();
+  } catch (error) {
+    setStatus(videoStatusEl, error.message, true);
+  } finally {
+    videoButton.disabled = false;
   }
 });
 
@@ -609,6 +748,29 @@ pdfForm.addEventListener('submit', async (event) => {
   }
 });
 
+resourceForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  resourceButton.disabled = true;
+  setStatus(resourceStatusEl, 'Adicionando...');
+  try {
+    const response = await fetch('/api/resource-links', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(new FormData(resourceForm))
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Falha ao adicionar link.');
+    renderListing(data.listing || { current: currentDir, directories: [], files: [] });
+    setStatus(resourceStatusEl, data.message || 'Link adicionado.');
+    resourceForm.reset();
+    syncFormsWithDirectory();
+  } catch (error) {
+    setStatus(resourceStatusEl, error.message, true);
+  } finally {
+    resourceButton.disabled = false;
+  }
+});
+
 refreshButton.addEventListener('click', () => {
   Promise.all([loadCourses(), loadDirectory()]).catch((error) => setStatus(statusEl, error.message, true));
 });
@@ -619,12 +781,27 @@ closeManage.addEventListener('click', closeManagePanel);
 libraryTab.addEventListener('click', closeManagePanel);
 
 courseSelect.addEventListener('change', () => {
-  pdfCourseSelect.value = courseSelect.value;
+  for (const select of [pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = courseSelect.value;
   updateCourseDescription();
 });
 
 pdfCourseSelect.addEventListener('change', () => {
-  courseSelect.value = pdfCourseSelect.value;
+  for (const select of [courseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = pdfCourseSelect.value;
+  updateCourseDescription();
+});
+
+nodeCourseSelect.addEventListener('change', () => {
+  for (const select of [courseSelect, pdfCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = nodeCourseSelect.value;
+  updateCourseDescription();
+});
+
+resourceCourseSelect.addEventListener('change', () => {
+  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, videoCourseSelect]) select.value = resourceCourseSelect.value;
+  updateCourseDescription();
+});
+
+videoCourseSelect.addEventListener('change', () => {
+  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect]) select.value = videoCourseSelect.value;
   updateCourseDescription();
 });
 

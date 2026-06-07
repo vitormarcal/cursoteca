@@ -1,6 +1,6 @@
 # Handoff do projeto
 
-Este projeto é um servidor Node.js simples para organizar cursos locais, baixar vídeos de aula com `yt-dlp`, anexar PDFs e manter metadados em arquivos JSON no disco.
+Este projeto é um servidor Node.js simples para organizar cursos locais, baixar vídeos de aula com `yt-dlp`, anexar PDFs, links e descrições, mantendo a organização relacional em SQLite e os arquivos físicos no disco.
 
 ## Como rodar
 
@@ -20,7 +20,13 @@ Também é possível trocar a porta:
 PORT=3001 npm start
 ```
 
-O servidor depende de `yt-dlp` disponível no `PATH` para baixar vídeos.
+Dependências externas esperadas no `PATH`:
+
+- `sqlite3`: usado pelo servidor para criar e consultar `arquivos/cursoteca.sqlite`.
+- `yt-dlp`: usado para baixar vídeos.
+- `ffmpeg`: usado pelo `yt-dlp` para merge/remux de vídeo e áudio quando necessário.
+
+O app não tem dependências npm além do Node. A integração com SQLite usa o CLI `sqlite3` via `child_process.execFile()`, evitando pacote nativo npm.
 
 ## Estrutura
 
@@ -35,20 +41,26 @@ O servidor depende de `yt-dlp` disponível no `PATH` para baixar vídeos.
 ├── arquivos/
 │   ├── .courses.json
 │   ├── .media.json
+│   ├── cursoteca.sqlite
 │   └── <cursos e materiais>
 └── .gitignore
 ```
 
-`arquivos/` é ignorado pelo Git de propósito. Ele guarda os materiais baixados, PDFs anexados e metadados locais.
+`arquivos/` é ignorado pelo Git de propósito. Ele guarda os materiais baixados, PDFs anexados, o banco SQLite e metadados locais legados.
 
 ## Features
 
 - Cadastrar cursos.
 - Salvar uma descrição para cada curso.
-- Navegar pelos materiais como diretórios.
+- Navegar pelos materiais como uma árvore de cursos e unidades.
+- Criar unidades hierárquicas genéricas, como Etapa, Módulo, Capítulo ou Submódulo.
+- Permitir profundidade indefinida de unidades.
 - Baixar vídeos de aula com formulário web.
+- Enviar vídeos `.mp4` manualmente pela interface.
 - Salvar vídeos em `arquivos/<curso>/<pasta-da-aula>/`.
-- Anexar um ou mais PDFs por curso/aula.
+- Anexar um ou mais PDFs por curso, unidade ou aula específica.
+- Adicionar links por curso, unidade ou aula específica.
+- Separar recursos no player entre materiais da aula, da unidade, de ancestrais e do curso.
 - Evitar sobrescrever PDFs com nomes repetidos usando sufixos como `arquivo (2).pdf`.
 - Adicionar descrição e links a vídeos `.mp4`.
 - Mostrar descrição e links salvos diretamente na listagem.
@@ -57,37 +69,178 @@ O servidor depende de `yt-dlp` disponível no `PATH` para baixar vídeos.
 
 ## Decisões principais
 
-### Node sem dependências
+### Node sem dependências npm
 
-O app usa apenas módulos nativos do Node (`http`, `fs`, `path`, `child_process`). Isso evita instalar Express, Multer ou SQLite para um caso local e pequeno.
+O app usa apenas módulos nativos do Node (`http`, `fs`, `path`, `child_process`). Isso evita instalar Express, Multer ou pacotes nativos de SQLite.
 
-### JSON em vez de SQLite
+### SQLite para a organização
 
-Foi escolhido JSON em disco porque os dados são simples e locais:
+O app agora usa SQLite porque a organização deixou de ser apenas uma listagem de pastas. A estrutura precisa representar relações:
 
-- cursos têm nome e descrição;
-- vídeos têm descrição e links;
-- o uso esperado é single-user;
-- os dados precisam ser fáceis de inspecionar e editar manualmente se necessário.
+- curso contém uma árvore de unidades;
+- unidade pode ter pai e filhos indefinidamente;
+- aula pertence a uma unidade;
+- recurso pode pertencer ao curso, a uma unidade ou a uma aula;
+- cada nó pode ter descrição, arquivos e links.
 
-SQLite pode valer no futuro se houver busca avançada, filtros, tags, histórico, múltiplos usuários, concorrência ou relações mais complexas.
+Os arquivos continuam no disco em `arquivos/<curso>/...`. O SQLite guarda os vínculos e metadados, não o conteúdo binário dos vídeos/PDFs.
 
-### `arquivos/` como raiz segura
+### JSON legado
 
-Todos os materiais ficam dentro de `arquivos/`. A API limpa e resolve caminhos com `safeJoin()` e `cleanRelativePath()` para impedir travessia de diretório.
-
-### Metadados ocultos
-
-Os metadados ficam em arquivos ocultos dentro de `arquivos/`:
+Os arquivos abaixo continuam existindo por compatibilidade com telas/fluxos antigos:
 
 ```text
 arquivos/.courses.json
 arquivos/.media.json
 ```
 
-A listagem ignora entradas que começam com ponto, então esses arquivos não aparecem na UI.
+O servidor não migra arquivos antigos automaticamente para o SQLite. O banco é preenchido apenas por ações explícitas da interface, como criar curso, criar unidade, baixar/enviar vídeo, anexar PDF ou adicionar link.
 
-## Formatos JSON
+Diretórios e arquivos que existam no disco, mas não tenham registro correspondente no SQLite, são ignorados pela listagem da biblioteca. Isso permite manter backups ou arquivos antigos em `arquivos/` sem misturá-los ao fluxo novo.
+
+### `arquivos/` como raiz segura
+
+Todos os materiais ficam dentro de `arquivos/`. A API limpa e resolve caminhos com `safeJoin()` e `cleanRelativePath()` para impedir travessia de diretório.
+
+### Banco e metadados ocultos
+
+O banco principal fica em:
+
+```text
+arquivos/cursoteca.sqlite
+```
+
+Metadados legados ficam em arquivos ocultos dentro de `arquivos/`:
+
+```text
+arquivos/.courses.json
+arquivos/.media.json
+```
+
+A listagem ignora entradas que começam com ponto e também ignora `cursoteca.sqlite`, então esses arquivos internos não aparecem na UI.
+
+## Solução de hierarquia e materiais
+
+O problema original era que alguns cursos, especialmente o curso de francês, têm mais níveis do que `Curso -> Módulo -> Aula`.
+
+Exemplo:
+
+```text
+Curso de Francês
+└── Etapa 1 - Fundação
+    ├── Módulo 01
+    │   ├── Aula 01
+    │   ├── Aula 02
+    │   └── Material geral do módulo
+    └── Módulo 02
+```
+
+A solução não fixa nomes como "Etapa" e "Módulo" no schema. Em vez disso:
+
+- todo nível intermediário é um `node`;
+- `node.type_label` guarda o rótulo exibido, como Etapa, Módulo, Capítulo ou Unidade;
+- `nodes.parent_id` permite profundidade indefinida;
+- aulas ficam em `lessons`;
+- PDFs e links ficam em `resources`;
+- `resources.scope` define se o recurso é do curso, da unidade ou da aula.
+
+Com isso, a UI consegue abrir uma aula e consultar os recursos com contexto:
+
+- recursos com `scope=lesson` e `lesson_id` da aula aparecem em `Material desta aula`;
+- recursos com `scope=node` e `node_id` da unidade da aula aparecem em `Outros materiais desta unidade`;
+- recursos de nós ancestrais aparecem como materiais da etapa/unidade superior;
+- recursos com `scope=course` aparecem como materiais gerais do curso.
+
+Arquivos existentes não são sincronizados para esse modelo durante a listagem. Para registrar materiais no SQLite, use a interface e envie novamente cada vídeo/PDF/link com o escopo correto. Arquivos sem registro no banco ficam ocultos na biblioteca.
+
+## Modelo SQLite
+
+### `courses`
+
+Representa cursos de primeiro nível:
+
+```text
+id
+name
+description
+path
+created_at
+updated_at
+```
+
+### `nodes`
+
+Representa qualquer unidade intermediária da árvore: Etapa, Módulo, Capítulo, Submódulo, Semana etc.
+
+```text
+id
+course_id
+parent_id nullable
+type_label
+title
+description
+path
+position
+created_at
+updated_at
+```
+
+Exemplo conceitual:
+
+```text
+Curso de Francês
+└── Etapa 1 - Fundação
+    └── Módulo 01
+        └── Submódulo A
+```
+
+Internamente, todos esses níveis são `nodes`; `type_label` define o nome apresentado na UI.
+
+### `lessons`
+
+Representa aulas em vídeo:
+
+```text
+id
+course_id
+node_id nullable
+title
+description
+video_path
+source_url
+position
+created_at
+updated_at
+```
+
+### `resources`
+
+Representa PDFs e links:
+
+```text
+id
+course_id
+node_id nullable
+lesson_id nullable
+type        -- file | link
+scope       -- course | node | lesson
+title
+description
+file_path nullable
+url nullable
+mime_type nullable
+position
+created_at
+updated_at
+```
+
+Regras de escopo:
+
+- `scope = course`: recurso geral do curso.
+- `scope = node`: recurso da unidade atual, como módulo ou etapa.
+- `scope = lesson`: recurso específico de uma aula.
+
+## Formatos JSON legados
 
 ### Cursos
 
@@ -161,6 +314,19 @@ Resposta resumida:
   "listing": {
     "current": "Curso/Aula",
     "parent": "Curso",
+    "context": {
+      "course": {
+        "id": 1,
+        "name": "Curso",
+        "description": "Descrição do curso"
+      },
+      "node": {
+        "id": 10,
+        "typeLabel": "Módulo",
+        "title": "Módulo 01",
+        "description": "Descrição da unidade"
+      }
+    },
     "directories": [],
     "files": [
       {
@@ -168,18 +334,36 @@ Resposta resumida:
         "path": "Curso/Aula/video.mp4",
         "size": 123,
         "modifiedAt": "...",
-        "metadata": null
+        "metadata": null,
+        "lesson": {
+          "id": 20,
+          "title": "video",
+          "description": ""
+        },
+        "resourceGroups": {
+          "lesson": [],
+          "node": [],
+          "course": [],
+          "ancestors": []
+        }
       }
     ]
   }
 }
 ```
 
-Para `.mp4`, `metadata` pode vir preenchido com descrição e links.
+Para `.mp4`, `lesson` e `resourceGroups` podem vir preenchidos. O frontend usa `resourceGroups` para separar:
+
+- materiais desta aula;
+- outros materiais desta unidade;
+- materiais de unidades ancestrais;
+- materiais do curso.
+
+Para `.pdf`, o item pode trazer `resource`, indicando a qual escopo o arquivo foi vinculado.
 
 ### `GET /api/courses`
 
-Lista cursos. Os cursos são diretórios de primeiro nível em `arquivos/`, enriquecidos com `.courses.json`.
+Lista cursos cadastrados em `courses` no SQLite. Diretórios antigos em `arquivos/` não são importados automaticamente.
 
 ### `POST /api/courses`
 
@@ -212,6 +396,34 @@ O destino final é:
 ```text
 arquivos/<course>/<lessonFolder>/<lessonName>.<ext>
 ```
+
+Depois do download, o servidor registra o vídeo como uma `lesson` no SQLite, vinculada à unidade correspondente a `<lessonFolder>`.
+
+### `POST /api/upload-video`
+
+Upload multipart de uma aula em vídeo.
+
+Campos:
+
+- `videoCourse`
+- `videoFolder`
+- `videoTitle`
+- `videoDescription`
+- `videoFile`
+
+Aceita apenas `.mp4`.
+
+Destino físico:
+
+```text
+arquivos/<videoCourse>/<videoFolder>/<videoTitle-ou-nome-original>.mp4
+```
+
+Vínculo lógico:
+
+- cria/usa o curso informado;
+- cria/usa os nós correspondentes a `videoFolder`;
+- cria uma `lesson` vinculada ao vídeo salvo.
 
 O app hoje cobre duas formas de download com `yt-dlp`.
 
@@ -271,9 +483,98 @@ Campos:
 
 - `pdfCourse`
 - `pdfFolder`
+- `pdfScope`: `course`, `node` ou `lesson`; padrão `node`
+- `pdfLessonPath`: caminho relativo do `.mp4` quando `pdfScope=lesson`
 - `pdfFiles`
 
 Aceita múltiplos PDFs.
+
+Destino físico:
+
+```text
+arquivos/<pdfCourse>/<pdfFolder>/<nome-do-pdf>.pdf
+```
+
+Vínculo lógico:
+
+- `pdfScope=course`: aparece como material geral do curso.
+- `pdfScope=node`: aparece como material da unidade/pasta atual.
+- `pdfScope=lesson`: aparece em `Material desta aula` no player da aula indicada por `pdfLessonPath`.
+
+### `POST /api/nodes`
+
+Cria ou atualiza uma unidade hierárquica.
+
+Content-Type:
+
+```text
+application/x-www-form-urlencoded
+```
+
+Campos:
+
+- `nodeCourse`
+- `nodeParentFolder`
+- `nodeType`
+- `nodeTitle`
+- `nodeDescription`
+
+Exemplo:
+
+```text
+nodeCourse=Curso de Francês Mairo Vergara
+nodeParentFolder=Etapa 1 - Fundação
+nodeType=Módulo
+nodeTitle=Módulo 01
+```
+
+Isso cria:
+
+```text
+arquivos/Curso de Francês Mairo Vergara/Etapa 1 - Fundação/Módulo 01/
+```
+
+E grava o nó correspondente em `nodes`.
+
+### `POST /api/resource-links`
+
+Adiciona um link como recurso de curso, unidade ou aula.
+
+Content-Type:
+
+```text
+application/x-www-form-urlencoded
+```
+
+Campos:
+
+- `resourceCourse`
+- `resourceFolder`
+- `resourceScope`: `course`, `node` ou `lesson`; padrão `node`
+- `resourceLessonPath`: caminho relativo do `.mp4` quando `resourceScope=lesson`
+- `resourceTitle`
+- `resourceUrl`
+- `resourceDescription`
+
+### `POST /api/node-metadata`
+
+Salva descrição e tipo de uma unidade existente.
+
+Content-Type:
+
+```text
+application/json
+```
+
+Body:
+
+```json
+{
+  "path": "Curso/Etapa/Módulo",
+  "typeLabel": "Módulo",
+  "description": "Descrição da unidade"
+}
+```
 
 ### `POST /api/media-metadata`
 
@@ -297,7 +598,7 @@ Body:
 }
 ```
 
-Se `description` estiver vazio e `links` for vazio, remove os metadados daquele vídeo.
+Se `description` estiver vazio e `links` for vazio, remove os metadados legados daquele vídeo. A descrição e os links também são sincronizados para `lessons` e `resources` no SQLite.
 
 ## UI
 
@@ -305,13 +606,25 @@ A UI fica em `public/index.html`, com comportamento em `public/app.js` e estilo 
 
 Fluxos principais:
 
-- Cadastrar curso no topo.
+- Cadastrar curso.
+- Criar unidades dentro de curso ou de outra unidade.
 - Selecionar curso e pasta da aula para baixar vídeo.
-- Selecionar curso e pasta para anexar PDFs.
+- Selecionar curso e unidade para enviar vídeo `.mp4`.
+- Selecionar curso, pasta e escopo para anexar PDFs.
+- Selecionar curso, pasta e escopo para adicionar links.
 - Navegar pela árvore em `Arquivos`.
 - Abrir `Detalhes` em vídeos `.mp4` para editar descrição e links.
 
 Ao navegar para uma pasta, os formulários tentam acompanhar o curso e a subpasta atual.
+
+Ao abrir um vídeo, a UI preenche automaticamente `Arquivo da aula` nos formulários de PDF e link. Isso facilita anexar um recurso com escopo `Aula específica`.
+
+No player, os recursos aparecem em blocos separados:
+
+- `Material desta aula`: PDFs/links vinculados diretamente à aula.
+- `Outros materiais desta unidade`: PDFs/links vinculados ao módulo/unidade atual.
+- `Materiais de <tipo>: <título>`: recursos de etapas ou unidades ancestrais.
+- `Materiais do curso`: recursos gerais do curso.
 
 ## Segurança e validação
 
@@ -319,8 +632,9 @@ Ao navegar para uma pasta, os formulários tentam acompanhar o curso e a subpast
 - `cleanPathPart()` remove caracteres problemáticos de nomes.
 - Upload de PDF aceita apenas extensão `.pdf`.
 - Metadados de vídeo só aceitam arquivos `.mp4` existentes.
-- Links de vídeo aceitam apenas `http:` e `https:`.
+- Links aceitam apenas `http:` e `https:`.
 - O parser multipart corrige nomes UTF-8 em uploads, inclusive nomes como `Módulo 1.pdf`.
+- O banco `cursoteca.sqlite` é filtrado da listagem pública.
 
 ## Git
 
@@ -343,9 +657,11 @@ c76ff98 Add video metadata links
 ## Próximas melhorias possíveis
 
 - Editar descrição de curso depois de criado.
+- Editar descrição de unidade pela UI com formulário dedicado.
 - Renomear curso/aula pela UI.
-- Mover vídeos e PDFs entre cursos/aulas pela UI.
+- Mover vídeos, PDFs e links entre cursos/unidades/aulas pela UI.
 - Busca por título, descrição e links.
 - Tags por vídeo.
 - Preview de PDFs e player embutido para vídeos.
-- Migrar para SQLite se metadados e consultas ficarem mais complexos.
+- Ordenação manual de cursos, unidades, aulas e recursos.
+- Exportar/importar o banco e validar arquivos órfãos no disco.

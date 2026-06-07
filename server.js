@@ -1,7 +1,7 @@
 import { createReadStream, promises as fs } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -9,6 +9,7 @@ const rootDir = __dirname;
 const filesDir = path.join(rootDir, 'arquivos');
 const courseMetaPath = path.join(filesDir, '.courses.json');
 const mediaMetaPath = path.join(filesDir, '.media.json');
+const databasePath = path.join(filesDir, 'cursoteca.sqlite');
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 
@@ -30,6 +31,286 @@ function sendJson(res, status, body) {
   send(res, status, JSON.stringify(body), {
     'content-type': 'application/json; charset=utf-8'
   });
+}
+
+function runSqlite(args, input = '') {
+  return new Promise((resolve, reject) => {
+    const child = execFile('sqlite3', [databasePath, ...args], {
+      cwd: rootDir,
+      maxBuffer: 1024 * 1024 * 20
+    }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(stderr || error.message));
+        return;
+      }
+      resolve(stdout);
+    });
+    if (input) child.stdin.end(input);
+  });
+}
+
+function sqlValue(value) {
+  if (value === null || value === undefined) return 'NULL';
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'NULL';
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+async function dbExec(sql) {
+  await fs.mkdir(filesDir, { recursive: true });
+  await runSqlite(['-batch'], sql);
+}
+
+async function dbAll(sql) {
+  await fs.mkdir(filesDir, { recursive: true });
+  const output = await runSqlite(['-json', sql]);
+  return output.trim() ? JSON.parse(output) : [];
+}
+
+async function dbOne(sql) {
+  return (await dbAll(sql))[0] || null;
+}
+
+async function initDatabase() {
+  await dbExec(`
+    PRAGMA foreign_keys = ON;
+    CREATE TABLE IF NOT EXISTS courses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT NOT NULL DEFAULT '',
+      path TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS nodes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      parent_id INTEGER REFERENCES nodes(id) ON DELETE CASCADE,
+      type_label TEXT NOT NULL DEFAULT 'Modulo',
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      path TEXT NOT NULL UNIQUE,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS lessons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      node_id INTEGER REFERENCES nodes(id) ON DELETE SET NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      video_path TEXT NOT NULL UNIQUE,
+      source_url TEXT,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS resources (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      node_id INTEGER REFERENCES nodes(id) ON DELETE CASCADE,
+      lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
+      type TEXT NOT NULL CHECK (type IN ('file', 'link')),
+      scope TEXT NOT NULL CHECK (scope IN ('course', 'node', 'lesson')),
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      file_path TEXT UNIQUE,
+      url TEXT,
+      mime_type TEXT,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_nodes_parent ON nodes(course_id, parent_id);
+    CREATE INDEX IF NOT EXISTS idx_lessons_node ON lessons(course_id, node_id);
+    CREATE INDEX IF NOT EXISTS idx_resources_targets ON resources(course_id, node_id, lesson_id, scope);
+  `);
+}
+
+async function upsertCourse(name, description = '') {
+  const cleanName = cleanPathPart(name);
+  if (!cleanName) return null;
+  const existing = await dbOne(`SELECT * FROM courses WHERE name = ${sqlValue(cleanName)} OR path = ${sqlValue(cleanName)}`);
+  if (existing) {
+    if (description) {
+      await dbExec(`UPDATE courses SET description = ${sqlValue(description)}, updated_at = CURRENT_TIMESTAMP WHERE id = ${existing.id};`);
+      return dbOne(`SELECT * FROM courses WHERE id = ${existing.id}`);
+    }
+    return existing;
+  }
+  await dbExec(`
+    INSERT INTO courses (name, description, path)
+    VALUES (${sqlValue(cleanName)}, ${sqlValue(description)}, ${sqlValue(cleanName)});
+  `);
+  return dbOne(`SELECT * FROM courses WHERE name = ${sqlValue(cleanName)}`);
+}
+
+function inferNodeType(title, depth) {
+  const normalized = title.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  if (normalized.includes('etapa')) return 'Etapa';
+  if (normalized.includes('modulo')) return 'Modulo';
+  if (normalized.includes('capitulo')) return 'Capitulo';
+  return depth <= 1 ? 'Modulo' : 'Unidade';
+}
+
+async function ensureNodeForPath(relativeDir) {
+  const parts = cleanRelativePath(relativeDir).split(path.sep).filter(Boolean);
+  if (!parts.length) return { course: null, node: null };
+
+  const course = await upsertCourse(parts[0]);
+  let parent = null;
+  let partial = parts[0];
+
+  for (let index = 1; index < parts.length; index += 1) {
+    const title = parts[index];
+    partial = cleanRelativePath(path.join(partial, title));
+    let node = await dbOne(`SELECT * FROM nodes WHERE path = ${sqlValue(partial)}`);
+    if (!node) {
+      await dbExec(`
+        INSERT INTO nodes (course_id, parent_id, type_label, title, path, position)
+        VALUES (${course.id}, ${parent ? parent.id : 'NULL'}, ${sqlValue(inferNodeType(title, index))}, ${sqlValue(title)}, ${sqlValue(partial)}, ${index});
+      `);
+      node = await dbOne(`SELECT * FROM nodes WHERE path = ${sqlValue(partial)}`);
+    }
+    parent = node;
+  }
+
+  return { course, node: parent };
+}
+
+async function findContextForPath(relativeDir) {
+  const parts = cleanRelativePath(relativeDir).split(path.sep).filter(Boolean);
+  if (!parts.length) return { course: null, node: null };
+  const coursePath = parts[0];
+  const course = await dbOne(`SELECT * FROM courses WHERE path = ${sqlValue(coursePath)} OR name = ${sqlValue(coursePath)}`);
+  if (!course) return { course: null, node: null };
+  if (parts.length === 1) return { course, node: null };
+  const nodePath = cleanRelativePath(parts.join(path.sep));
+  const node = await dbOne(`SELECT * FROM nodes WHERE path = ${sqlValue(nodePath)}`);
+  return { course, node: node || null };
+}
+
+async function findLessonForFile(filePath) {
+  const cleanPath = cleanRelativePath(filePath);
+  return dbOne(`SELECT * FROM lessons WHERE video_path = ${sqlValue(cleanPath)}`);
+}
+
+async function findResourceForFile(filePath) {
+  const cleanPath = cleanRelativePath(filePath);
+  return dbOne(`SELECT * FROM resources WHERE file_path = ${sqlValue(cleanPath)}`);
+}
+
+async function ensureLessonForFile(filePath, metadata = null) {
+  const cleanPath = cleanRelativePath(filePath);
+  const directory = path.dirname(cleanPath).replace(/^\.$/, '');
+  const { course, node } = await ensureNodeForPath(directory);
+  if (!course) return null;
+  const title = cleanPathPart(path.basename(cleanPath, path.extname(cleanPath)));
+  const existing = await dbOne(`SELECT * FROM lessons WHERE video_path = ${sqlValue(cleanPath)}`);
+  if (existing) {
+    if (metadata?.description && !existing.description) {
+      await dbExec(`UPDATE lessons SET description = ${sqlValue(metadata.description)}, updated_at = CURRENT_TIMESTAMP WHERE id = ${existing.id};`);
+    }
+    await syncLessonLinks(existing.id, course.id, metadata?.links || []);
+    return dbOne(`SELECT * FROM lessons WHERE id = ${existing.id}`);
+  }
+  await dbExec(`
+    INSERT INTO lessons (course_id, node_id, title, description, video_path)
+    VALUES (${course.id}, ${node ? node.id : 'NULL'}, ${sqlValue(title)}, ${sqlValue(metadata?.description || '')}, ${sqlValue(cleanPath)});
+  `);
+  const lesson = await dbOne(`SELECT * FROM lessons WHERE video_path = ${sqlValue(cleanPath)}`);
+  await syncLessonLinks(lesson.id, course.id, metadata?.links || []);
+  return lesson;
+}
+
+async function syncLessonLinks(lessonId, courseId, links) {
+  const normalized = normalizeLinks(links);
+  for (const link of normalized) {
+    const existing = await dbOne(`
+      SELECT id FROM resources
+      WHERE type = 'link' AND scope = 'lesson' AND lesson_id = ${lessonId} AND url = ${sqlValue(link.url)}
+    `);
+    if (!existing) {
+      await dbExec(`
+        INSERT INTO resources (course_id, lesson_id, type, scope, title, url)
+        VALUES (${courseId}, ${lessonId}, 'link', 'lesson', ${sqlValue(link.title || link.url)}, ${sqlValue(link.url)});
+      `);
+    }
+  }
+}
+
+async function ensureFileResource(filePath, scope = 'node', lessonPath = '') {
+  const cleanPath = cleanRelativePath(filePath);
+  const directory = path.dirname(cleanPath).replace(/^\.$/, '');
+  const { course, node } = await ensureNodeForPath(directory);
+  if (!course) return null;
+  const title = cleanPathPart(path.basename(cleanPath, path.extname(cleanPath)));
+  let lesson = null;
+  if (scope === 'lesson' && lessonPath) {
+    lesson = await ensureLessonForFile(lessonPath);
+  }
+  const existing = await dbOne(`SELECT * FROM resources WHERE file_path = ${sqlValue(cleanPath)}`);
+  if (existing) return existing;
+  await dbExec(`
+    INSERT INTO resources (course_id, node_id, lesson_id, type, scope, title, file_path, mime_type)
+    VALUES (
+      ${course.id},
+      ${scope === 'course' ? 'NULL' : node ? node.id : 'NULL'},
+      ${lesson ? lesson.id : 'NULL'},
+      'file',
+      ${sqlValue(scope)},
+      ${sqlValue(title)},
+      ${sqlValue(cleanPath)},
+      ${sqlValue(mimeTypes.get(path.extname(cleanPath).toLowerCase()) || 'application/octet-stream')}
+    );
+  `);
+  return dbOne(`SELECT * FROM resources WHERE file_path = ${sqlValue(cleanPath)}`);
+}
+
+async function resourcesForLesson(filePath) {
+  const lesson = await dbOne(`SELECT * FROM lessons WHERE video_path = ${sqlValue(cleanRelativePath(filePath))}`);
+  if (!lesson) return { lesson: [], node: [], ancestors: [], course: [] };
+  const lessonResources = await dbAll(`
+    SELECT * FROM resources
+    WHERE lesson_id = ${lesson.id}
+    ORDER BY position, title COLLATE NOCASE
+  `);
+  const nodeResources = lesson.node_id ? await dbAll(`
+    SELECT * FROM resources
+    WHERE scope = 'node' AND node_id = ${lesson.node_id} AND lesson_id IS NULL
+    ORDER BY position, title COLLATE NOCASE
+  `) : [];
+  const ancestors = [];
+  let current = lesson.node_id ? await dbOne(`SELECT * FROM nodes WHERE id = ${lesson.node_id}`) : null;
+  while (current?.parent_id) {
+    current = await dbOne(`SELECT * FROM nodes WHERE id = ${current.parent_id}`);
+    if (!current) break;
+    const items = await dbAll(`
+      SELECT * FROM resources
+      WHERE scope = 'node' AND node_id = ${current.id} AND lesson_id IS NULL
+      ORDER BY position, title COLLATE NOCASE
+    `);
+    if (items.length) ancestors.push({ node: current, resources: items });
+  }
+  const courseResources = await dbAll(`
+    SELECT * FROM resources
+    WHERE scope = 'course' AND course_id = ${lesson.course_id} AND lesson_id IS NULL
+    ORDER BY position, title COLLATE NOCASE
+  `);
+  return { lesson: lessonResources, node: nodeResources, ancestors, course: courseResources };
+}
+
+function resourceToClient(resource) {
+  return {
+    id: resource.id,
+    type: resource.type,
+    scope: resource.scope,
+    title: resource.title,
+    description: resource.description,
+    path: resource.file_path,
+    url: resource.url,
+    mimeType: resource.mime_type
+  };
 }
 
 function safeJoin(base, target) {
@@ -73,6 +354,7 @@ async function listDirectory(relativeDir = '') {
   const currentDir = safeJoin(filesDir, cleanRelative);
   const entries = await fs.readdir(currentDir, { withFileTypes: true });
   const mediaMetadata = await readMediaMetadata();
+  const context = await findContextForPath(cleanRelative);
   const directories = [];
   const files = [];
 
@@ -86,18 +368,63 @@ async function listDirectory(relativeDir = '') {
     const stat = await fs.stat(absolute);
 
     if (entry.isDirectory()) {
+      const childContext = await findContextForPath(relative);
+      if (!childContext.course || (cleanRelative && !childContext.node)) {
+        continue;
+      }
       directories.push({
         name: entry.name,
         path: relative,
-        modifiedAt: stat.mtime.toISOString()
+        modifiedAt: stat.mtime.toISOString(),
+        node: childContext.node ? {
+          id: childContext.node.id,
+          typeLabel: childContext.node.type_label,
+          title: childContext.node.title,
+          description: childContext.node.description
+        } : null
       });
-    } else if (entry.isFile() && entry.name !== 'baixar_aula.sh') {
+    } else if (entry.isFile() && entry.name !== 'baixar_aula.sh' && entry.name !== path.basename(databasePath)) {
+      const isMp4 = entry.name.toLowerCase().endsWith('.mp4');
+      const isPdfFile = entry.name.toLowerCase().endsWith('.pdf');
+      const metadata = mediaMetadata.files[relative] || null;
+      let lesson = null;
+      let resourceGroups = null;
+      let resource = null;
+      if (isMp4) {
+        lesson = await findLessonForFile(relative);
+        if (!lesson) continue;
+        resourceGroups = lesson ? await resourcesForLesson(relative) : null;
+      } else if (isPdfFile) {
+        resource = await findResourceForFile(relative);
+        if (!resource) continue;
+      } else {
+        continue;
+      }
       files.push({
         name: entry.name,
         path: relative,
         size: stat.size,
         modifiedAt: stat.mtime.toISOString(),
-        metadata: mediaMetadata.files[relative] || null
+        metadata: metadata || (lesson ? { description: lesson.description, links: [] } : null),
+        lesson: lesson ? {
+          id: lesson.id,
+          title: lesson.title,
+          description: lesson.description
+        } : null,
+        resource: resource ? resourceToClient(resource) : null,
+        resourceGroups: resourceGroups ? {
+          lesson: resourceGroups.lesson.map(resourceToClient),
+          node: resourceGroups.node.map(resourceToClient),
+          course: resourceGroups.course.map(resourceToClient),
+          ancestors: resourceGroups.ancestors.map((group) => ({
+            node: {
+              id: group.node.id,
+              typeLabel: group.node.type_label,
+              title: group.node.title
+            },
+            resources: group.resources.map(resourceToClient)
+          }))
+        } : null
       });
     }
   }
@@ -108,6 +435,19 @@ async function listDirectory(relativeDir = '') {
   return {
     current: cleanRelative,
     parent: cleanRelative ? path.dirname(cleanRelative).replace(/^\.$/, '') : null,
+    context: {
+      course: context.course ? {
+        id: context.course.id,
+        name: context.course.name,
+        description: context.course.description
+      } : null,
+      node: context.node ? {
+        id: context.node.id,
+        typeLabel: context.node.type_label,
+        title: context.node.title,
+        description: context.node.description
+      } : null
+    },
     directories,
     files
   };
@@ -115,21 +455,14 @@ async function listDirectory(relativeDir = '') {
 
 async function listCourses() {
   await fs.mkdir(filesDir, { recursive: true });
-  const entries = await fs.readdir(filesDir, { withFileTypes: true });
-  const metadata = await readCourseMetadata();
-
-  return entries
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
-    .map((entry) => {
-      const saved = metadata.courses[entry.name] || {};
-      return {
-        name: entry.name,
-        description: saved.description || '',
-        createdAt: saved.createdAt || null,
-        updatedAt: saved.updatedAt || null
-      };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  const rows = await dbAll('SELECT * FROM courses ORDER BY name COLLATE NOCASE;');
+  return rows.map((course) => ({
+    id: course.id,
+    name: course.name,
+    description: course.description || '',
+    createdAt: course.created_at || null,
+    updatedAt: course.updated_at || null
+  }));
 }
 
 async function readCourseMetadata() {
@@ -359,6 +692,13 @@ async function handleDownload(req, res) {
     const folderPath = safeJoin(filesDir, folder);
     await fs.mkdir(folderPath, { recursive: true });
     const result = await runDownload({ folder: folderPath, lessonName, url });
+    const downloaded = (await fs.readdir(folderPath))
+      .filter((name) => name.startsWith(lessonName) && path.extname(name).toLowerCase() === '.mp4')
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      .at(-1);
+    if (downloaded) {
+      await ensureLessonForFile(cleanRelativePath(path.join(folder, downloaded)));
+    }
     const listing = await listDirectory(folder);
 
     sendJson(res, 200, {
@@ -394,15 +734,17 @@ async function handleCreateCourse(req, res) {
       updatedAt: now
     };
     await writeCourseMetadata(metadata);
+    const course = await upsertCourse(name, description);
 
     sendJson(res, 200, {
       ok: true,
       message: 'Curso cadastrado.',
       course: {
+        id: course.id,
         name,
         description,
-        createdAt: metadata.courses[name].createdAt,
-        updatedAt: now
+        createdAt: course.created_at || metadata.courses[name].createdAt,
+        updatedAt: course.updated_at || now
       },
       courses: await listCourses(),
       listing: await listDirectory(name)
@@ -430,6 +772,11 @@ async function handlePdfUpload(req, res) {
       parts.find((part) => part.name === 'pdfFolder')?.content.toString('utf8') || ''
     );
     const pdfCourse = parts.find((part) => part.name === 'pdfCourse')?.content.toString('utf8') || '';
+    const pdfScopeRaw = parts.find((part) => part.name === 'pdfScope')?.content.toString('utf8') || 'node';
+    const pdfLessonPath = cleanRelativePath(
+      parts.find((part) => part.name === 'pdfLessonPath')?.content.toString('utf8') || ''
+    );
+    const pdfScope = pdfScopeRaw === 'lesson' || pdfScopeRaw === 'course' ? pdfScopeRaw : 'node';
     const folder = buildCoursePath(pdfCourse, pdfFolder);
     const pdfs = parts.filter((part) => part.name === 'pdfFiles' && part.filename && part.content.length);
 
@@ -450,6 +797,8 @@ async function handlePdfUpload(req, res) {
 
       const destination = await uniqueFilePath(folderPath, cleanName);
       await fs.writeFile(destination, pdf.content);
+      const relativePath = cleanRelativePath(path.relative(filesDir, destination));
+      await ensureFileResource(relativePath, pdfScope, pdfLessonPath);
       saved.push(path.basename(destination));
     }
 
@@ -462,6 +811,66 @@ async function handlePdfUpload(req, res) {
   } catch (error) {
     sendJson(res, 500, {
       error: error.message || 'Falha ao adicionar PDF.'
+    });
+  }
+}
+
+async function handleVideoUpload(req, res) {
+  try {
+    const contentType = req.headers['content-type'] || '';
+    const boundary = /boundary=(?:"([^"]+)"|([^;]+))/.exec(contentType)?.[1] ||
+      /boundary=(?:"([^"]+)"|([^;]+))/.exec(contentType)?.[2];
+
+    if (!boundary) {
+      return sendJson(res, 400, { error: 'Envio invalido.' });
+    }
+
+    const body = await readRawBody(req, 1024 * 1024 * 1024 * 4);
+    const parts = parseMultipart(body, boundary);
+    const videoCourse = parts.find((part) => part.name === 'videoCourse')?.content.toString('utf8') || '';
+    const videoFolder = cleanRelativePath(
+      parts.find((part) => part.name === 'videoFolder')?.content.toString('utf8') || ''
+    );
+    const videoTitle = cleanPathPart(
+      parts.find((part) => part.name === 'videoTitle')?.content.toString('utf8') || ''
+    );
+    const description = String(
+      parts.find((part) => part.name === 'videoDescription')?.content.toString('utf8') || ''
+    ).trim().slice(0, 8000);
+    const video = parts.find((part) => part.name === 'videoFile' && part.filename && part.content.length);
+    const folder = buildCoursePath(videoCourse, videoFolder);
+
+    if (!videoCourse || !folder || !video) {
+      return sendJson(res, 400, { error: 'Informe curso, unidade e video.' });
+    }
+
+    const originalName = cleanPathPart(path.basename(video.filename));
+    if (path.extname(originalName).toLowerCase() !== '.mp4') {
+      return sendJson(res, 400, { error: 'Envie apenas videos .mp4.' });
+    }
+
+    await fs.mkdir(filesDir, { recursive: true });
+    const folderPath = safeJoin(filesDir, folder);
+    await fs.mkdir(folderPath, { recursive: true });
+
+    const finalName = `${videoTitle || path.basename(originalName, path.extname(originalName))}.mp4`;
+    const destination = await uniqueFilePath(folderPath, finalName);
+    await fs.writeFile(destination, video.content);
+    const relativePath = cleanRelativePath(path.relative(filesDir, destination));
+    const lesson = await ensureLessonForFile(relativePath, { description, links: [] });
+    if (lesson && description) {
+      await dbExec(`UPDATE lessons SET description = ${sqlValue(description)}, updated_at = CURRENT_TIMESTAMP WHERE id = ${lesson.id};`);
+    }
+
+    sendJson(res, 200, {
+      ok: true,
+      message: 'Video enviado.',
+      saved: path.basename(destination),
+      listing: await listDirectory(folder)
+    });
+  } catch (error) {
+    sendJson(res, 500, {
+      error: error.message || 'Falha ao enviar video.'
     });
   }
 }
@@ -518,6 +927,12 @@ async function handleMediaMetadata(req, res) {
     }
 
     await writeMediaMetadata(metadata);
+    const lesson = await ensureLessonForFile(filePath, { description, links });
+    if (lesson) {
+      await dbExec(`UPDATE lessons SET description = ${sqlValue(description)}, updated_at = CURRENT_TIMESTAMP WHERE id = ${lesson.id};`);
+      await dbExec(`DELETE FROM resources WHERE type = 'link' AND scope = 'lesson' AND lesson_id = ${lesson.id};`);
+      await syncLessonLinks(lesson.id, lesson.course_id, links);
+    }
 
     sendJson(res, 200, {
       ok: true,
@@ -534,6 +949,147 @@ async function handleMediaMetadata(req, res) {
     sendJson(res, 500, {
       error: error.message || 'Falha ao salvar detalhes do video.'
     });
+  }
+}
+
+async function handleCreateNode(req, res) {
+  try {
+    const body = await readBody(req);
+    const form = new URLSearchParams(body);
+    const courseName = form.get('nodeCourse');
+    const parentFolder = cleanRelativePath(form.get('nodeParentFolder'));
+    const title = cleanPathPart(form.get('nodeTitle'));
+    const typeLabel = String(form.get('nodeType') || 'Unidade').trim().slice(0, 80) || 'Unidade';
+    const description = String(form.get('nodeDescription') || '').trim().slice(0, 8000);
+    const parentPath = buildCoursePath(courseName, parentFolder);
+    const nodePath = cleanRelativePath(path.join(parentPath, title));
+
+    if (!courseName || !title) {
+      return sendJson(res, 400, { error: 'Informe curso e nome da unidade.' });
+    }
+
+    await fs.mkdir(safeJoin(filesDir, nodePath), { recursive: true });
+    const { course, node: parent } = await ensureNodeForPath(parentPath);
+    let node = await dbOne(`SELECT * FROM nodes WHERE path = ${sqlValue(nodePath)}`);
+    if (node) {
+      await dbExec(`
+        UPDATE nodes
+        SET type_label = ${sqlValue(typeLabel)}, description = ${sqlValue(description)}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${node.id};
+      `);
+    } else {
+      await dbExec(`
+        INSERT INTO nodes (course_id, parent_id, type_label, title, description, path)
+        VALUES (${course.id}, ${parent ? parent.id : 'NULL'}, ${sqlValue(typeLabel)}, ${sqlValue(title)}, ${sqlValue(description)}, ${sqlValue(nodePath)});
+      `);
+    }
+
+    sendJson(res, 200, {
+      ok: true,
+      message: 'Unidade cadastrada.',
+      listing: await listDirectory(parentPath)
+    });
+  } catch (error) {
+    sendJson(res, 500, { error: error.message || 'Falha ao cadastrar unidade.' });
+  }
+}
+
+async function handleNodeMetadata(req, res) {
+  try {
+    const body = await readRawBody(req, 1024 * 64);
+    const data = JSON.parse(body.toString('utf8') || '{}');
+    const nodePath = cleanRelativePath(data.path);
+    const description = String(data.description || '').trim().slice(0, 8000);
+    const typeLabel = String(data.typeLabel || '').trim().slice(0, 80);
+
+    if (!nodePath) {
+      return sendJson(res, 400, { error: 'Informe a unidade.' });
+    }
+
+    const { node } = await ensureNodeForPath(nodePath);
+    if (!node) {
+      return sendJson(res, 404, { error: 'Unidade nao encontrada.' });
+    }
+
+    await dbExec(`
+      UPDATE nodes
+      SET description = ${sqlValue(description)},
+          type_label = ${sqlValue(typeLabel || node.type_label)},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${node.id};
+    `);
+
+    sendJson(res, 200, {
+      ok: true,
+      message: 'Descricao salva.',
+      listing: await listDirectory(nodePath)
+    });
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      sendJson(res, 400, { error: 'JSON invalido.' });
+      return;
+    }
+    sendJson(res, 500, { error: error.message || 'Falha ao salvar unidade.' });
+  }
+}
+
+async function handleResourceLink(req, res) {
+  try {
+    const body = await readBody(req);
+    const form = new URLSearchParams(body);
+    const courseName = form.get('resourceCourse');
+    const folder = buildCoursePath(courseName, form.get('resourceFolder'));
+    const scopeRaw = form.get('resourceScope') || 'node';
+    const scope = scopeRaw === 'course' || scopeRaw === 'lesson' ? scopeRaw : 'node';
+    const title = String(form.get('resourceTitle') || '').trim().slice(0, 200);
+    const description = String(form.get('resourceDescription') || '').trim().slice(0, 4000);
+    const url = String(form.get('resourceUrl') || '').trim();
+    const lessonPath = cleanRelativePath(form.get('resourceLessonPath'));
+
+    if (!courseName || !url) {
+      return sendJson(res, 400, { error: 'Informe curso e URL.' });
+    }
+
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return sendJson(res, 400, { error: 'Informe uma URL http ou https.' });
+      }
+    } catch {
+      return sendJson(res, 400, { error: 'Informe uma URL valida.' });
+    }
+
+    const { course, node } = await ensureNodeForPath(folder);
+    if (!course) {
+      return sendJson(res, 400, { error: 'Informe um curso valido.' });
+    }
+    let lesson = null;
+    if (scope === 'lesson') {
+      if (!lessonPath) return sendJson(res, 400, { error: 'Informe a aula do link.' });
+      lesson = await ensureLessonForFile(lessonPath);
+    }
+
+    await dbExec(`
+      INSERT INTO resources (course_id, node_id, lesson_id, type, scope, title, description, url)
+      VALUES (
+        ${course.id},
+        ${scope === 'course' ? 'NULL' : node ? node.id : 'NULL'},
+        ${lesson ? lesson.id : 'NULL'},
+        'link',
+        ${sqlValue(scope)},
+        ${sqlValue(title || url)},
+        ${sqlValue(description)},
+        ${sqlValue(url)}
+      );
+    `);
+
+    sendJson(res, 200, {
+      ok: true,
+      message: 'Link adicionado.',
+      listing: await listDirectory(folder)
+    });
+  } catch (error) {
+    sendJson(res, 500, { error: error.message || 'Falha ao adicionar link.' });
   }
 }
 
@@ -598,8 +1154,28 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'POST' && req.url === '/api/upload-video') {
+      await handleVideoUpload(req, res);
+      return;
+    }
+
     if (req.method === 'POST' && req.url === '/api/courses') {
       await handleCreateCourse(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/nodes') {
+      await handleCreateNode(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/node-metadata') {
+      await handleNodeMetadata(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/resource-links') {
+      await handleResourceLink(req, res);
       return;
     }
 
@@ -623,6 +1199,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+await initDatabase();
 server.listen(port, host, () => {
   console.log(`Servidor em http://${host}:${port}`);
 });
