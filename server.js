@@ -85,7 +85,6 @@ async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
       parent_id INTEGER REFERENCES nodes(id) ON DELETE CASCADE,
-      type_label TEXT NOT NULL DEFAULT 'Modulo',
       title TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       path TEXT NOT NULL UNIQUE,
@@ -145,14 +144,6 @@ async function upsertCourse(name, description = '') {
   return dbOne(`SELECT * FROM courses WHERE name = ${sqlValue(cleanName)}`);
 }
 
-function inferNodeType(title, depth) {
-  const normalized = title.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-  if (normalized.includes('etapa')) return 'Etapa';
-  if (normalized.includes('modulo')) return 'Modulo';
-  if (normalized.includes('capitulo')) return 'Capitulo';
-  return depth <= 1 ? 'Modulo' : 'Unidade';
-}
-
 async function ensureNodeForPath(relativeDir) {
   const parts = cleanRelativePath(relativeDir).split(path.sep).filter(Boolean);
   if (!parts.length) return { course: null, node: null };
@@ -167,8 +158,8 @@ async function ensureNodeForPath(relativeDir) {
     let node = await dbOne(`SELECT * FROM nodes WHERE path = ${sqlValue(partial)}`);
     if (!node) {
       await dbExec(`
-        INSERT INTO nodes (course_id, parent_id, type_label, title, path, position)
-        VALUES (${course.id}, ${parent ? parent.id : 'NULL'}, ${sqlValue(inferNodeType(title, index))}, ${sqlValue(title)}, ${sqlValue(partial)}, ${index});
+        INSERT INTO nodes (course_id, parent_id, title, path, position)
+        VALUES (${course.id}, ${parent ? parent.id : 'NULL'}, ${sqlValue(title)}, ${sqlValue(partial)}, ${index});
       `);
       node = await dbOne(`SELECT * FROM nodes WHERE path = ${sqlValue(partial)}`);
     }
@@ -378,7 +369,6 @@ async function listDirectory(relativeDir = '') {
         modifiedAt: stat.mtime.toISOString(),
         node: childContext.node ? {
           id: childContext.node.id,
-          typeLabel: childContext.node.type_label,
           title: childContext.node.title,
           description: childContext.node.description
         } : null
@@ -419,7 +409,6 @@ async function listDirectory(relativeDir = '') {
           ancestors: resourceGroups.ancestors.map((group) => ({
             node: {
               id: group.node.id,
-              typeLabel: group.node.type_label,
               title: group.node.title
             },
             resources: group.resources.map(resourceToClient)
@@ -443,7 +432,6 @@ async function listDirectory(relativeDir = '') {
       } : null,
       node: context.node ? {
         id: context.node.id,
-        typeLabel: context.node.type_label,
         title: context.node.title,
         description: context.node.description
       } : null
@@ -959,7 +947,6 @@ async function handleCreateNode(req, res) {
     const courseName = form.get('nodeCourse');
     const parentFolder = cleanRelativePath(form.get('nodeParentFolder'));
     const title = cleanPathPart(form.get('nodeTitle'));
-    const typeLabel = String(form.get('nodeType') || 'Unidade').trim().slice(0, 80) || 'Unidade';
     const description = String(form.get('nodeDescription') || '').trim().slice(0, 8000);
     const parentPath = buildCoursePath(courseName, parentFolder);
     const nodePath = cleanRelativePath(path.join(parentPath, title));
@@ -974,13 +961,13 @@ async function handleCreateNode(req, res) {
     if (node) {
       await dbExec(`
         UPDATE nodes
-        SET type_label = ${sqlValue(typeLabel)}, description = ${sqlValue(description)}, updated_at = CURRENT_TIMESTAMP
+        SET description = ${sqlValue(description)}, updated_at = CURRENT_TIMESTAMP
         WHERE id = ${node.id};
       `);
     } else {
       await dbExec(`
-        INSERT INTO nodes (course_id, parent_id, type_label, title, description, path)
-        VALUES (${course.id}, ${parent ? parent.id : 'NULL'}, ${sqlValue(typeLabel)}, ${sqlValue(title)}, ${sqlValue(description)}, ${sqlValue(nodePath)});
+        INSERT INTO nodes (course_id, parent_id, title, description, path)
+        VALUES (${course.id}, ${parent ? parent.id : 'NULL'}, ${sqlValue(title)}, ${sqlValue(description)}, ${sqlValue(nodePath)});
       `);
     }
 
@@ -1000,7 +987,6 @@ async function handleNodeMetadata(req, res) {
     const data = JSON.parse(body.toString('utf8') || '{}');
     const nodePath = cleanRelativePath(data.path);
     const description = String(data.description || '').trim().slice(0, 8000);
-    const typeLabel = String(data.typeLabel || '').trim().slice(0, 80);
 
     if (!nodePath) {
       return sendJson(res, 400, { error: 'Informe a unidade.' });
@@ -1014,7 +1000,6 @@ async function handleNodeMetadata(req, res) {
     await dbExec(`
       UPDATE nodes
       SET description = ${sqlValue(description)},
-          type_label = ${sqlValue(typeLabel || node.type_label)},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${node.id};
     `);

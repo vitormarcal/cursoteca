@@ -389,6 +389,27 @@ a:focus-visible {
   margin-top: 32px;
 }
 
+.context-actions {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 28px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.inline-actions-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.inline-actions-header h3 {
+  margin-bottom: 0;
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;
@@ -448,7 +469,7 @@ a:focus-visible {
 }
 
 .collection-card {
-  grid-template-rows: 132px auto auto auto;
+  grid-template-rows: 132px auto auto;
   min-height: 230px;
   padding: 12px;
 }
@@ -471,18 +492,6 @@ a:focus-visible {
   margin-top: 12px;
   overflow-wrap: anywhere;
   line-height: 1.2;
-}
-
-.type-badge {
-  justify-self: start;
-  margin-top: 10px;
-  border-radius: 6px;
-  padding: 4px 7px;
-  background: var(--surface-2);
-  color: var(--accent-2);
-  font-size: 0.72rem;
-  font-weight: 950;
-  text-transform: uppercase;
 }
 
 .collection-card span:last-child,
@@ -606,12 +615,62 @@ a:focus-visible {
   margin-bottom: 18px;
 }
 
+.action-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.action-choice {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+}
+
+.action-choice:hover,
+.action-choice.active {
+  border-color: rgba(8, 125, 161, 0.36);
+  background: #edf7fb;
+}
+
+.action-choice strong {
+  line-height: 1.2;
+}
+
+.action-choice span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.3;
+}
+
 .form,
 .metadata-form {
   display: grid;
   gap: 10px;
-  padding: 18px 0;
+  padding: 14px 0 0;
   border-top: 1px solid var(--line);
+}
+
+.context-actions .form {
+  max-width: 680px;
+}
+
+.managed-form[hidden] {
+  display: none;
+}
+
+.contextual-form label.context-field,
+.contextual-form label.context-field + input,
+.contextual-form label.context-field + select,
+.locked-scope label.scope-field,
+.locked-scope label.scope-field + select {
+  display: none;
 }
 
 .form h3 {

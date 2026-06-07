@@ -53,8 +53,7 @@ O app não tem dependências npm além do Node. A integração com SQLite usa o 
 - Cadastrar cursos.
 - Salvar uma descrição para cada curso.
 - Navegar pelos materiais como uma árvore de cursos e unidades.
-- Criar unidades hierárquicas genéricas, como Etapa, Módulo, Capítulo ou Submódulo.
-- Permitir profundidade indefinida de unidades.
+- Criar seções hierárquicas com profundidade indefinida.
 - Baixar vídeos de aula com formulário web.
 - Enviar vídeos `.mp4` manualmente pela interface.
 - Salvar vídeos em `arquivos/<curso>/<pasta-da-aula>/`.
@@ -81,7 +80,7 @@ O app agora usa SQLite porque a organização deixou de ser apenas uma listagem 
 - unidade pode ter pai e filhos indefinidamente;
 - aula pertence a uma unidade;
 - recurso pode pertencer ao curso, a uma unidade ou a uma aula;
-- cada nó pode ter descrição, arquivos e links.
+- cada seção pode ter descrição, arquivos e links.
 
 Os arquivos continuam no disco em `arquivos/<curso>/...`. O SQLite guarda os vínculos e metadados, não o conteúdo binário dos vídeos/PDFs.
 
@@ -137,8 +136,7 @@ Curso de Francês
 
 A solução não fixa nomes como "Etapa" e "Módulo" no schema. Em vez disso:
 
-- todo nível intermediário é um `node`;
-- `node.type_label` guarda o rótulo exibido, como Etapa, Módulo, Capítulo ou Unidade;
+- todo nível intermediário é um `node`, exibido na UI como seção;
 - `nodes.parent_id` permite profundidade indefinida;
 - aulas ficam em `lessons`;
 - PDFs e links ficam em `resources`;
@@ -170,13 +168,12 @@ updated_at
 
 ### `nodes`
 
-Representa qualquer unidade intermediária da árvore: Etapa, Módulo, Capítulo, Submódulo, Semana etc.
+Representa qualquer seção intermediária da árvore.
 
 ```text
 id
 course_id
 parent_id nullable
-type_label
 title
 description
 path
@@ -194,7 +191,7 @@ Curso de Francês
         └── Submódulo A
 ```
 
-Internamente, todos esses níveis são `nodes`; `type_label` define o nome apresentado na UI.
+Internamente, todos esses níveis são `nodes`. O nome da seção é suficiente para expressar se ela é uma etapa, módulo, capítulo ou qualquer outro agrupamento.
 
 ### `lessons`
 
@@ -322,7 +319,6 @@ Resposta resumida:
       },
       "node": {
         "id": 10,
-        "typeLabel": "Módulo",
         "title": "Módulo 01",
         "description": "Descrição da unidade"
       }
@@ -515,7 +511,6 @@ Campos:
 
 - `nodeCourse`
 - `nodeParentFolder`
-- `nodeType`
 - `nodeTitle`
 - `nodeDescription`
 
@@ -524,7 +519,6 @@ Exemplo:
 ```text
 nodeCourse=Curso de Francês Mairo Vergara
 nodeParentFolder=Etapa 1 - Fundação
-nodeType=Módulo
 nodeTitle=Módulo 01
 ```
 
@@ -571,7 +565,6 @@ Body:
 ```json
 {
   "path": "Curso/Etapa/Módulo",
-  "typeLabel": "Módulo",
   "description": "Descrição da unidade"
 }
 ```
@@ -619,16 +612,18 @@ Ao navegar para uma pasta, os formulários tentam acompanhar o curso e a subpast
 
 Ao abrir um vídeo, a UI preenche automaticamente `Arquivo da aula` nos formulários de PDF e link. Isso facilita anexar um recurso com escopo `Aula específica`.
 
+O painel `Adicionar` é contextual: ele mostra primeiro ações possíveis no local atual e abre apenas um formulário por vez. Na raiz, a ação natural é criar curso. Dentro de um curso ou seção, aparecem ações como criar seção, enviar aula, baixar aula, PDF da seção e link da seção. Com uma aula aberta, aparecem ações diretas para PDF/link daquela aula.
+
 No player, os recursos aparecem em blocos separados:
 
 - `Material desta aula`: PDFs/links vinculados diretamente à aula.
 - `Outros materiais desta unidade`: PDFs/links vinculados ao módulo/unidade atual.
-- `Materiais de <tipo>: <título>`: recursos de etapas ou unidades ancestrais.
+- `Materiais de <seção>`: recursos de seções ancestrais.
 - `Materiais do curso`: recursos gerais do curso.
 
 Regra de uso da UI:
 
-- Crie seções apenas para níveis navegáveis do curso, como Etapa, Módulo, Capítulo ou Unidade.
+- Crie seções apenas para níveis navegáveis do curso.
 - Não crie uma seção chamada "Aula 01" se ela representa um vídeo; envie o vídeo como aula dentro da seção correta.
 - Para anexar material de uma aula, clique primeiro na aula/vídeo e depois use `Aula selecionada`.
 - Para anexar material geral de um módulo/etapa, navegue até essa seção e use `Seção atual`.

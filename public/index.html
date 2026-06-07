@@ -56,20 +56,17 @@
               <p id="course-description" class="muted-text"></p>
             </div>
           </div>
-          <div id="file-list" class="shelves" aria-live="polite"></div>
-        </section>
-      </main>
+          <section id="context-actions" class="context-actions" aria-label="Adicionar conteúdo">
+            <div class="inline-actions-header">
+              <div>
+                <p class="eyebrow">Adicionar</p>
+                <h3>Ações neste contexto</h3>
+              </div>
+            </div>
 
-      <aside id="manage-panel" class="manage-panel" aria-label="Adicionar conteudo">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Organizar</p>
-            <h2>Adicionar</h2>
-          </div>
-          <button id="close-manage" type="button" class="icon-button" title="Fechar" aria-label="Fechar">×</button>
-        </div>
+            <div id="action-list" class="action-list" aria-label="Ações disponíveis"></div>
 
-        <form id="course-form" class="form" autocomplete="off">
+            <form id="course-form" class="form managed-form" autocomplete="off" hidden>
           <h3>Criar curso</h3>
           <label for="courseName">Nome do curso</label>
           <input id="courseName" name="courseName" type="text" required placeholder="Gramática Essencial">
@@ -81,21 +78,13 @@
           <p id="course-status" class="status" role="status" aria-live="polite"></p>
         </form>
 
-        <form id="node-form" class="form" autocomplete="off">
+        <form id="node-form" class="form managed-form" autocomplete="off" hidden>
           <h3>Criar seção</h3>
-          <label for="nodeCourse">Curso</label>
+          <label for="nodeCourse" class="context-field">Curso</label>
           <select id="nodeCourse" name="nodeCourse" required></select>
 
-          <label for="nodeParentFolder">Criar dentro de</label>
+          <label for="nodeParentFolder" class="context-field">Criar dentro de</label>
           <input id="nodeParentFolder" name="nodeParentFolder" type="text" placeholder="Etapa 1 - Fundação">
-
-          <label for="nodeType">Tipo</label>
-          <select id="nodeType" name="nodeType" required>
-            <option value="Etapa">Etapa</option>
-            <option value="Módulo">Módulo</option>
-            <option value="Capítulo">Capítulo</option>
-            <option value="Unidade">Unidade</option>
-          </select>
 
           <label for="nodeTitle">Nome</label>
           <input id="nodeTitle" name="nodeTitle" type="text" required placeholder="Módulo 01">
@@ -107,12 +96,12 @@
           <p id="node-status" class="status" role="status" aria-live="polite"></p>
         </form>
 
-        <form id="download-form" class="form" autocomplete="off">
+        <form id="download-form" class="form managed-form" autocomplete="off" hidden>
           <h3>Baixar aula</h3>
-          <label for="course">Curso</label>
+          <label for="course" class="context-field">Curso</label>
           <select id="course" name="course" required></select>
 
-          <label for="lessonFolder">Seção da aula</label>
+          <label for="lessonFolder" class="context-field">Seção da aula</label>
           <input id="lessonFolder" name="lessonFolder" type="text" required placeholder="Capítulo 4 - Sintaxe">
 
           <label for="lessonName">Nome da aula</label>
@@ -125,12 +114,12 @@
           <p id="status" class="status" role="status" aria-live="polite"></p>
         </form>
 
-        <form id="video-form" class="form" enctype="multipart/form-data">
+        <form id="video-form" class="form managed-form" enctype="multipart/form-data" hidden>
           <h3>Enviar vídeo</h3>
-          <label for="videoCourse">Curso</label>
+          <label for="videoCourse" class="context-field">Curso</label>
           <select id="videoCourse" name="videoCourse" required></select>
 
-          <label for="videoFolder">Unidade da aula</label>
+          <label for="videoFolder" class="context-field">Unidade da aula</label>
           <input id="videoFolder" name="videoFolder" type="text" required placeholder="Etapa 1/Módulo 01">
 
           <label for="videoTitle">Nome da aula</label>
@@ -146,15 +135,15 @@
           <p id="video-status" class="status" role="status" aria-live="polite"></p>
         </form>
 
-        <form id="pdf-form" class="form" enctype="multipart/form-data">
+        <form id="pdf-form" class="form managed-form" enctype="multipart/form-data" hidden>
           <h3>Anexar PDFs</h3>
-          <label for="pdfCourse">Curso</label>
+          <label for="pdfCourse" class="context-field">Curso</label>
           <select id="pdfCourse" name="pdfCourse" required></select>
 
-          <label for="pdfFolder">Salvar em</label>
+          <label for="pdfFolder" class="context-field">Salvar em</label>
           <input id="pdfFolder" name="pdfFolder" type="text" placeholder="Capítulo 4 - Sintaxe">
 
-          <label for="pdfScope">Esse PDF pertence a</label>
+          <label for="pdfScope" class="scope-field">Esse PDF pertence a</label>
           <select id="pdfScope" name="pdfScope">
             <option value="node">Seção atual</option>
             <option value="lesson">Aula selecionada</option>
@@ -171,15 +160,15 @@
           <p id="pdf-status" class="status" role="status" aria-live="polite"></p>
         </form>
 
-        <form id="resource-form" class="form" autocomplete="off">
+        <form id="resource-form" class="form managed-form" autocomplete="off" hidden>
           <h3>Adicionar link</h3>
-          <label for="resourceCourse">Curso</label>
+          <label for="resourceCourse" class="context-field">Curso</label>
           <select id="resourceCourse" name="resourceCourse" required></select>
 
-          <label for="resourceFolder">Unidade</label>
+          <label for="resourceFolder" class="context-field">Unidade</label>
           <input id="resourceFolder" name="resourceFolder" type="text" placeholder="Etapa 1/Módulo 01">
 
-          <label for="resourceScope">Esse link pertence a</label>
+          <label for="resourceScope" class="scope-field">Esse link pertence a</label>
           <select id="resourceScope" name="resourceScope">
             <option value="node">Seção atual</option>
             <option value="lesson">Aula selecionada</option>
@@ -200,8 +189,11 @@
 
           <button id="resource-button" type="submit">Adicionar link</button>
           <p id="resource-status" class="status" role="status" aria-live="polite"></p>
-        </form>
-      </aside>
+            </form>
+          </section>
+          <div id="file-list" class="shelves" aria-live="polite"></div>
+        </section>
+      </main>
     </div>
 
     <script src="/public/app.js" type="module"></script>

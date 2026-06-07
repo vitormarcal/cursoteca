@@ -28,7 +28,6 @@ const videoCourseSelect = document.querySelector('#videoCourse');
 const lessonFolderInput = document.querySelector('#lessonFolder');
 const pdfFolderInput = document.querySelector('#pdfFolder');
 const nodeParentFolderInput = document.querySelector('#nodeParentFolder');
-const nodeTypeSelect = document.querySelector('#nodeType');
 const resourceFolderInput = document.querySelector('#resourceFolder');
 const videoFolderInput = document.querySelector('#videoFolder');
 const pdfLessonPathInput = document.querySelector('#pdfLessonPath');
@@ -42,16 +41,18 @@ const libraryHeading = document.querySelector('#library-heading');
 const courseCount = document.querySelector('#course-count');
 const mediaCount = document.querySelector('#media-count');
 const nowPlaying = document.querySelector('#now-playing');
-const managePanel = document.querySelector('#manage-panel');
 const libraryTab = document.querySelector('#library-tab');
 const manageTab = document.querySelector('#manage-tab');
 const openManage = document.querySelector('#open-manage');
-const closeManage = document.querySelector('#close-manage');
+const actionList = document.querySelector('#action-list');
+const managedForms = [...document.querySelectorAll('.managed-form')];
+const contextActions = document.querySelector('#context-actions');
 
 let currentDir = '';
 let courses = [];
 let lastListing = null;
 let selectedLesson = null;
+let activeAction = '';
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -179,8 +180,6 @@ function syncFormsWithDirectory() {
     nodeParentFolderInput.value = folder;
     resourceFolderInput.value = folder;
     videoFolderInput.value = folder;
-    nodeTypeSelect.value = folder ? 'Módulo' : 'Etapa';
-    if (folder.split('/').filter(Boolean).length >= 1) nodeTypeSelect.value = 'Capítulo';
     return;
   }
   const course = selectedCourse();
@@ -192,7 +191,6 @@ function syncFormsWithDirectory() {
   nodeParentFolderInput.value = '';
   resourceFolderInput.value = '';
   videoFolderInput.value = '';
-  nodeTypeSelect.value = 'Etapa';
 }
 
 function updateLessonTargets() {
@@ -203,14 +201,154 @@ function updateLessonTargets() {
   resourceLessonLabel.textContent = resourceScopeSelect.value === 'lesson' ? label : '';
 }
 
+function currentPathParts() {
+  return currentDir.split('/').filter(Boolean);
+}
+
+function currentCourseName() {
+  return currentPathParts()[0] || selectedCourse();
+}
+
+function currentSectionPath() {
+  return currentPathParts().slice(1).join('/');
+}
+
+function actionDefinitions() {
+  const inLibraryRoot = !currentDir;
+  const inCourseOrSection = Boolean(currentDir);
+  const hasLesson = Boolean(selectedLesson);
+  const actions = [];
+
+  if (inLibraryRoot) {
+    actions.push({
+      id: 'course',
+      formId: 'course-form',
+      title: 'Criar curso',
+      detail: 'Comece uma nova coleção de aulas.'
+    });
+    return actions;
+  }
+
+  actions.push({
+    id: 'section',
+    formId: 'node-form',
+    title: 'Criar seção',
+    detail: currentSectionPath() ? 'Adicionar uma subseção aqui.' : 'Adicionar etapa, módulo ou capítulo neste curso.'
+  });
+
+  if (inCourseOrSection) {
+    actions.push({
+      id: 'video',
+      formId: 'video-form',
+      title: 'Enviar aula',
+      detail: 'Adicionar um vídeo MP4 nesta seção.'
+    });
+    actions.push({
+      id: 'download',
+      formId: 'download-form',
+      title: 'Baixar aula',
+      detail: 'Baixar uma aula por URL nesta seção.'
+    });
+    actions.push({
+      id: 'pdf-node',
+      formId: 'pdf-form',
+      title: 'PDF da seção',
+      detail: 'Material geral desta seção.'
+    });
+    actions.push({
+      id: 'link-node',
+      formId: 'resource-form',
+      title: 'Link da seção',
+      detail: 'Referência geral desta seção.'
+    });
+  }
+
+  if (hasLesson) {
+    actions.unshift({
+      id: 'pdf-lesson',
+      formId: 'pdf-form',
+      title: 'PDF da aula',
+      detail: cleanTitle(selectedLesson.name)
+    });
+    actions.unshift({
+      id: 'link-lesson',
+      formId: 'resource-form',
+      title: 'Link da aula',
+      detail: cleanTitle(selectedLesson.name)
+    });
+  }
+
+  return actions;
+}
+
+function renderActionList(preferred = activeAction, forceOpen = false) {
+  const actions = actionDefinitions();
+  actionList.replaceChildren();
+  for (const action of actions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'action-choice';
+    button.dataset.action = action.id;
+
+    const title = document.createElement('strong');
+    title.textContent = action.title;
+
+    const detail = document.createElement('span');
+    detail.textContent = action.detail;
+
+    button.append(title, detail);
+    button.addEventListener('click', () => setActiveAction(action.id));
+    actionList.append(button);
+  }
+
+  const next = actions.some((action) => action.id === preferred)
+    ? preferred
+    : (!currentDir || forceOpen ? actions[0]?.id : '');
+  setActiveAction(next || '');
+}
+
+function configureAction(actionId) {
+  const isLessonAction = actionId.endsWith('-lesson');
+  const isNodeAction = actionId.endsWith('-node');
+
+  if (actionId.startsWith('pdf-')) {
+    pdfScopeSelect.value = isLessonAction ? 'lesson' : 'node';
+    pdfForm.classList.toggle('locked-scope', isLessonAction || isNodeAction);
+  } else {
+    pdfForm.classList.remove('locked-scope');
+  }
+
+  if (actionId.startsWith('link-')) {
+    resourceScopeSelect.value = isLessonAction ? 'lesson' : 'node';
+    resourceForm.classList.toggle('locked-scope', isLessonAction || isNodeAction);
+  } else {
+    resourceForm.classList.remove('locked-scope');
+  }
+
+  updateLessonTargets();
+}
+
+function setActiveAction(actionId) {
+  activeAction = actionId;
+  const action = actionDefinitions().find((item) => item.id === actionId);
+  for (const form of managedForms) {
+    form.hidden = !action || form.id !== action.formId;
+    form.classList.add('contextual-form');
+  }
+  for (const button of actionList.querySelectorAll('.action-choice')) {
+    button.classList.toggle('active', button.dataset.action === actionId);
+  }
+  configureAction(actionId);
+}
+
 function openManagePanel() {
-  managePanel.classList.add('open');
   manageTab.classList.add('active');
-  libraryTab.classList.remove('active');
+  libraryTab.classList.add('active');
+  renderActionList(activeAction, true);
+  contextActions.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function closeManagePanel() {
-  managePanel.classList.remove('open');
   manageTab.classList.remove('active');
   libraryTab.classList.add('active');
 }
@@ -252,8 +390,10 @@ function renderListing(listing) {
   currentDir = listing.current || '';
   lastListing = listing;
   selectedLesson = null;
+  activeAction = currentDir ? '' : 'course';
   syncFormsWithDirectory();
   updateLessonTargets();
+  renderActionList();
   renderBreadcrumb(currentDir);
   updateCourseDescription();
   nowPlaying.hidden = true;
@@ -343,15 +483,10 @@ function createDirectoryCard(directory) {
   const title = document.createElement('strong');
   title.textContent = directory.name;
 
-  const badge = document.createElement('span');
-  badge.className = 'type-badge';
-  badge.textContent = directory.node?.typeLabel || 'Curso';
-
   const meta = document.createElement('span');
-  const nodeLabel = directory.node?.typeLabel ? `${directory.node.typeLabel} · ` : '';
-  meta.textContent = directory.node?.description || course?.description || `${nodeLabel}Atualizado em ${formatDate(directory.modifiedAt)}`;
+  meta.textContent = directory.node?.description || course?.description || `Atualizado em ${formatDate(directory.modifiedAt)}`;
 
-  button.append(art, badge, title, meta);
+  button.append(art, title, meta);
   return button;
 }
 
@@ -413,6 +548,7 @@ function renderPlayer(file) {
   pdfScopeSelect.value = 'lesson';
   resourceScopeSelect.value = 'lesson';
   updateLessonTargets();
+  renderActionList();
 
   const video = document.createElement('video');
   video.controls = true;
@@ -460,7 +596,25 @@ function renderPlayer(file) {
     details.append(createMetadataEditor(file));
   });
 
-  actions.append(open, edit);
+  const attachPdf = document.createElement('button');
+  attachPdf.type = 'button';
+  attachPdf.className = 'secondary-action';
+  attachPdf.textContent = 'Anexar PDF';
+  attachPdf.addEventListener('click', () => {
+    openManagePanel();
+    setActiveAction('pdf-lesson');
+  });
+
+  const attachLink = document.createElement('button');
+  attachLink.type = 'button';
+  attachLink.className = 'secondary-action';
+  attachLink.textContent = 'Adicionar link';
+  attachLink.addEventListener('click', () => {
+    openManagePanel();
+    setActiveAction('link-lesson');
+  });
+
+  actions.append(open, attachPdf, attachLink, edit);
   details.append(label, title, meta, description, renderLinks(file), renderResourceGroups(file), actions);
   nowPlaying.append(video, details);
   nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -485,7 +639,7 @@ function renderResourceGroups(file) {
   }
 
   for (const group of ancestorGroups) {
-    wrapper.append(createResourceShelf(`Materiais de ${group.node.typeLabel || 'unidade'}: ${group.node.title}`, group.resources || []));
+    wrapper.append(createResourceShelf(`Materiais de ${group.node.title}`, group.resources || []));
   }
 
   if (courseResources.length) {
@@ -810,7 +964,6 @@ refreshButton.addEventListener('click', () => {
 
 openManage.addEventListener('click', openManagePanel);
 manageTab.addEventListener('click', openManagePanel);
-closeManage.addEventListener('click', closeManagePanel);
 libraryTab.addEventListener('click', closeManagePanel);
 
 courseSelect.addEventListener('change', () => {
