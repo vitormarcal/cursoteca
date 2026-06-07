@@ -53,6 +53,7 @@ let courses = [];
 let lastListing = null;
 let selectedLesson = null;
 let activeAction = '';
+let playerOpen = false;
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -390,6 +391,7 @@ function renderListing(listing) {
   currentDir = listing.current || '';
   lastListing = listing;
   selectedLesson = null;
+  playerOpen = false;
   activeAction = currentDir ? '' : 'course';
   syncFormsWithDirectory();
   updateLessonTargets();
@@ -398,11 +400,18 @@ function renderListing(listing) {
   updateCourseDescription();
   nowPlaying.hidden = true;
   nowPlaying.replaceChildren();
-  fileList.replaceChildren();
 
   pageTitle.textContent = listingTitle();
   libraryHeading.textContent = currentDir ? 'Conteúdo desta seção' : 'Cursos em destaque';
   mediaCount.textContent = `${directories.length + files.length} ${directories.length + files.length === 1 ? 'item nesta pasta' : 'itens nesta pasta'}`;
+
+  renderListingFiles(listing);
+}
+
+function renderListingFiles(listing) {
+  const directories = listing.directories || [];
+  const files = listing.files || [];
+  fileList.replaceChildren();
 
   if (currentDir) {
     fileList.append(createBackCard(listing.parent || ''));
@@ -422,11 +431,11 @@ function renderListing(listing) {
   const pdfs = files.filter(isPdf);
   const otherFiles = files.filter((file) => !isVideo(file) && !isPdf(file));
 
-  if (videos.length) {
+  if (videos.length && !playerOpen) {
     fileList.append(createShelf('Aulas em video', videos.map(createVideoCard)));
   }
 
-  if (pdfs.length) {
+  if (pdfs.length && !playerOpen) {
     fileList.append(createShelf('Materiais', pdfs.map(createFileCard)));
   }
 
@@ -545,6 +554,7 @@ function renderPlayer(file) {
   nowPlaying.hidden = false;
   nowPlaying.replaceChildren();
   selectedLesson = file;
+  playerOpen = true;
   pdfScopeSelect.value = 'lesson';
   resourceScopeSelect.value = 'lesson';
   updateLessonTargets();
@@ -554,6 +564,12 @@ function renderPlayer(file) {
   video.controls = true;
   video.src = fileHref(file.path);
   video.preload = 'metadata';
+
+  const lessonMain = document.createElement('div');
+  lessonMain.className = 'lesson-main';
+
+  const stage = document.createElement('div');
+  stage.className = 'lesson-stage';
 
   const details = document.createElement('div');
   details.className = 'player-details';
@@ -614,10 +630,61 @@ function renderPlayer(file) {
     setActiveAction('link-lesson');
   });
 
-  actions.append(open, attachPdf, attachLink, edit);
-  details.append(label, title, meta, description, renderLinks(file), renderResourceGroups(file), actions);
-  nowPlaying.append(video, details);
+  actions.append(attachPdf, attachLink, edit, open);
+  details.append(label, title, meta, description, renderLinks(file), actions);
+
+  lessonMain.append(video, details);
+  stage.append(lessonMain, createLessonSidebar(file));
+  nowPlaying.append(stage);
+  appendIfPresent(nowPlaying, renderResourceGroups(file));
+  renderListingFiles(lastListing || { directories: [], files: [] });
   nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function createLessonSidebar(activeFile) {
+  const sidebar = document.createElement('aside');
+  sidebar.className = 'lesson-sidebar';
+
+  const heading = document.createElement('div');
+  heading.className = 'lesson-sidebar-heading';
+
+  const eyebrow = document.createElement('span');
+  eyebrow.className = 'eyebrow';
+  eyebrow.textContent = 'Aulas';
+
+  const title = document.createElement('strong');
+  title.textContent = listingTitle();
+
+  heading.append(eyebrow, title);
+
+  const list = document.createElement('div');
+  list.className = 'lesson-list';
+
+  const lessons = (lastListing?.files || []).filter(isVideo);
+  lessons.forEach((lesson, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'lesson-list-item';
+    button.classList.toggle('active', lesson.path === activeFile.path);
+    button.addEventListener('click', () => renderPlayer(lesson));
+
+    const number = document.createElement('span');
+    number.className = 'lesson-number';
+    number.textContent = String(index + 1).padStart(2, '0');
+
+    const text = document.createElement('strong');
+    text.textContent = cleanTitle(lesson.name);
+
+    const meta = document.createElement('span');
+    const materialCount = lesson.resourceGroups?.lesson?.length || 0;
+    meta.textContent = materialCount ? `${materialCount} material${materialCount === 1 ? '' : 'is'}` : formatDate(lesson.modifiedAt);
+
+    button.append(number, text, meta);
+    list.append(button);
+  });
+
+  sidebar.append(heading, list);
+  return sidebar;
 }
 
 function renderResourceGroups(file) {
@@ -630,26 +697,33 @@ function renderResourceGroups(file) {
   const ancestorGroups = groups.ancestors || [];
   const courseResources = groups.course || [];
 
-  if (lessonResources.length) {
-    wrapper.append(createResourceShelf('Material desta aula', lessonResources));
-  }
+  appendIfPresent(wrapper, createResourceShelf('Materiais desta aula', lessonResources));
+  appendIfPresent(wrapper, createResourceAccordion('Outras aulas desta seção', resourcesByOtherLessons(file)));
+  appendIfPresent(wrapper, createResourceAccordion('Materiais de seções', [
+    { title: listingTitle(), resources: nodeResources },
+    ...ancestorGroups.map((group) => ({ title: group.node.title, resources: group.resources || [] })),
+    { title: 'Curso', resources: courseResources }
+  ]));
 
-  if (nodeResources.length) {
-    wrapper.append(createResourceShelf('Outros materiais desta unidade', nodeResources));
-  }
+  return wrapper.children.length ? wrapper : null;
+}
 
-  for (const group of ancestorGroups) {
-    wrapper.append(createResourceShelf(`Materiais de ${group.node.title}`, group.resources || []));
-  }
+function appendIfPresent(parent, child) {
+  if (child) parent.append(child);
+}
 
-  if (courseResources.length) {
-    wrapper.append(createResourceShelf('Materiais do curso', courseResources));
-  }
-
-  return wrapper;
+function resourcesByOtherLessons(activeFile) {
+  return (lastListing?.files || [])
+    .filter((file) => isVideo(file) && file.path !== activeFile.path)
+    .map((file) => ({
+      title: cleanTitle(file.name),
+      resources: file.resourceGroups?.lesson || []
+    }));
 }
 
 function createResourceShelf(title, resources) {
+  if (!resources.length) return null;
+
   const section = document.createElement('section');
   section.className = 'resource-shelf';
 
@@ -662,6 +736,45 @@ function createResourceShelf(title, resources) {
 
   section.append(heading, list);
   return section;
+}
+
+function createResourceAccordion(title, groups) {
+  const visibleGroups = groups.filter((group) => group.resources.length);
+  if (!visibleGroups.length) return null;
+
+  const section = document.createElement('section');
+  section.className = 'resource-shelf resource-accordion';
+
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+
+  const list = document.createElement('div');
+  list.className = 'accordion-list';
+  for (const group of visibleGroups) {
+    list.append(createResourceDisclosure(group.title, group.resources));
+  }
+
+  section.append(heading, list);
+  return section;
+}
+
+function createResourceDisclosure(title, resources) {
+  const details = document.createElement('details');
+  details.className = 'resource-disclosure';
+
+  const summary = document.createElement('summary');
+  const label = document.createElement('strong');
+  label.textContent = title;
+  const count = document.createElement('span');
+  count.textContent = `${resources.length} ${resources.length === 1 ? 'item' : 'itens'}`;
+  summary.append(label, count);
+
+  const list = document.createElement('div');
+  list.className = 'resource-list';
+  list.append(...resources.map(createResourceLink));
+
+  details.append(summary, list);
+  return details;
 }
 
 function createResourceLink(resource) {
