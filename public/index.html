@@ -7,101 +7,114 @@
     <link rel="stylesheet" href="/public/styles.css">
   </head>
   <body>
-    <main class="shell">
-      <section class="workspace" aria-labelledby="page-title">
-        <div class="intro">
-          <p class="eyebrow">Cursoteca</p>
-          <h1 id="page-title">Baixar aula</h1>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacao principal">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">C</span>
+          <div>
+            <strong>Cursoteca</strong>
+            <span>Biblioteca local</span>
+          </div>
         </div>
 
-        <form id="course-form" class="form course-form" autocomplete="off">
-          <div class="field">
-            <label for="courseName">Cadastrar curso</label>
-            <input id="courseName" name="courseName" type="text" required placeholder="Gramática Essencial">
-          </div>
+        <nav class="side-nav">
+          <button id="library-tab" class="nav-item active" type="button">
+            <span aria-hidden="true">▶</span>
+            Biblioteca
+          </button>
+          <button id="manage-tab" class="nav-item" type="button">
+            <span aria-hidden="true">＋</span>
+            Adicionar
+          </button>
+        </nav>
 
-          <div class="field">
-            <label for="courseDescription">Descrição</label>
-            <textarea id="courseDescription" name="courseDescription" rows="3" placeholder="Curso principal de gramática e aulas complementares"></textarea>
-          </div>
+        <div class="side-note">
+          <span id="course-count">0 cursos</span>
+          <span id="media-count">0 itens nesta pasta</span>
+        </div>
+      </aside>
 
-          <div class="actions">
-            <button id="course-button" type="submit" class="course-button">
-              <span class="button-icon" aria-hidden="true">+</span>
-              <span>Criar curso</span>
-            </button>
-            <p id="course-status" class="status" role="status" aria-live="polite"></p>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Aprender</p>
+            <h1 id="page-title">Sua biblioteca</h1>
+            <nav id="breadcrumb" class="breadcrumb" aria-label="Caminho atual"></nav>
           </div>
+          <div class="top-actions">
+            <button id="refresh-button" type="button" class="icon-button" title="Atualizar" aria-label="Atualizar">↻</button>
+            <button id="open-manage" type="button" class="primary-action">Adicionar conteúdo</button>
+          </div>
+        </header>
+
+        <section id="now-playing" class="now-playing" hidden aria-label="Video selecionado"></section>
+
+        <section class="library" aria-labelledby="library-heading">
+          <div class="section-heading">
+            <div>
+              <h2 id="library-heading">Continuar navegando</h2>
+              <p id="course-description" class="muted-text"></p>
+            </div>
+          </div>
+          <div id="file-list" class="shelves" aria-live="polite"></div>
+        </section>
+      </main>
+
+      <aside id="manage-panel" class="manage-panel" aria-label="Adicionar conteudo">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Organizar</p>
+            <h2>Adicionar</h2>
+          </div>
+          <button id="close-manage" type="button" class="icon-button" title="Fechar" aria-label="Fechar">×</button>
+        </div>
+
+        <form id="course-form" class="form" autocomplete="off">
+          <h3>Criar curso</h3>
+          <label for="courseName">Nome do curso</label>
+          <input id="courseName" name="courseName" type="text" required placeholder="Gramática Essencial">
+
+          <label for="courseDescription">Descrição</label>
+          <textarea id="courseDescription" name="courseDescription" rows="3" placeholder="Notas sobre o curso, professor ou objetivo"></textarea>
+
+          <button id="course-button" type="submit">Criar curso</button>
+          <p id="course-status" class="status" role="status" aria-live="polite"></p>
         </form>
 
         <form id="download-form" class="form" autocomplete="off">
-          <div class="field">
-            <label for="course">Curso</label>
-            <select id="course" name="course" required></select>
-          </div>
+          <h3>Baixar aula</h3>
+          <label for="course">Curso</label>
+          <select id="course" name="course" required></select>
 
-          <div class="field">
-            <label for="lessonFolder">Pasta da aula</label>
-            <input id="lessonFolder" name="lessonFolder" type="text" required placeholder="Capítulo 4 - Sintaxe">
-          </div>
+          <label for="lessonFolder">Pasta da aula</label>
+          <input id="lessonFolder" name="lessonFolder" type="text" required placeholder="Capítulo 4 - Sintaxe">
 
-          <div class="field">
-            <label for="lessonName">Nome do arquivo</label>
-            <input id="lessonName" name="lessonName" type="text" required placeholder="Aula 5 - Sintaxe">
-          </div>
+          <label for="lessonName">Nome do arquivo</label>
+          <input id="lessonName" name="lessonName" type="text" required placeholder="Aula 5 - Sintaxe">
 
-          <div class="field full">
-            <label for="url">URL da aula</label>
-            <input id="url" name="url" type="url" required placeholder="https://...">
-          </div>
+          <label for="url">URL da aula</label>
+          <input id="url" name="url" type="url" required placeholder="https://...">
 
-          <div class="actions">
-            <button id="submit-button" type="submit">
-              <span class="button-icon" aria-hidden="true">↓</span>
-              <span>Baixar</span>
-            </button>
-            <p id="status" class="status" role="status" aria-live="polite"></p>
-          </div>
+          <button id="submit-button" type="submit">Baixar video</button>
+          <p id="status" class="status" role="status" aria-live="polite"></p>
         </form>
 
-        <form id="pdf-form" class="form pdf-form" enctype="multipart/form-data">
-          <div class="field">
-            <label for="pdfCourse">Curso</label>
-            <select id="pdfCourse" name="pdfCourse" required></select>
-          </div>
+        <form id="pdf-form" class="form" enctype="multipart/form-data">
+          <h3>Anexar PDFs</h3>
+          <label for="pdfCourse">Curso</label>
+          <select id="pdfCourse" name="pdfCourse" required></select>
 
-          <div class="field">
-            <label for="pdfFolder">Pasta dos PDFs</label>
-            <input id="pdfFolder" name="pdfFolder" type="text" placeholder="Capítulo 4 - Sintaxe">
-          </div>
+          <label for="pdfFolder">Pasta dos PDFs</label>
+          <input id="pdfFolder" name="pdfFolder" type="text" placeholder="Capítulo 4 - Sintaxe">
 
-          <div class="field full">
-            <label for="pdfFiles">PDFs da aula</label>
-            <input id="pdfFiles" name="pdfFiles" type="file" accept="application/pdf,.pdf" multiple required>
-          </div>
+          <label for="pdfFiles">PDFs da aula</label>
+          <input id="pdfFiles" name="pdfFiles" type="file" accept="application/pdf,.pdf" multiple required>
 
-          <div class="actions">
-            <button id="pdf-button" type="submit" class="upload-button">
-              <span class="button-icon" aria-hidden="true">+</span>
-              <span>Adicionar PDFs</span>
-            </button>
-            <p id="pdf-status" class="status" role="status" aria-live="polite"></p>
-          </div>
+          <button id="pdf-button" type="submit">Adicionar PDFs</button>
+          <p id="pdf-status" class="status" role="status" aria-live="polite"></p>
         </form>
-      </section>
-
-      <section class="library" aria-labelledby="library-title">
-        <div class="section-heading">
-          <div>
-            <h2 id="library-title">Arquivos</h2>
-            <nav id="breadcrumb" class="breadcrumb" aria-label="Caminho atual"></nav>
-            <p id="course-description" class="course-description"></p>
-          </div>
-          <button id="refresh-button" type="button" class="secondary">Atualizar</button>
-        </div>
-        <div id="file-list" class="file-list" aria-live="polite"></div>
-      </section>
-    </main>
+      </aside>
+    </div>
 
     <script src="/public/app.js" type="module"></script>
   </body>
