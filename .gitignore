@@ -1,0 +1,5 @@
+arquivos/
+.agents/
+.codex/
+node_modules/
+.DS_Store
