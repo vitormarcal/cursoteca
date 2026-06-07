@@ -1,17 +1,17 @@
 :root {
-  color-scheme: dark;
-  --bg: #08090d;
-  --surface: #11141b;
-  --surface-2: #181d26;
-  --surface-3: #222938;
-  --text: #f5f7fb;
-  --muted: #9ba5b7;
-  --line: rgba(255, 255, 255, 0.1);
-  --accent: #e64d3c;
-  --accent-2: #19a7ce;
+  color-scheme: light;
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #edf1f6;
+  --surface-3: #dfe6ef;
+  --text: #171b24;
+  --muted: #667085;
+  --line: rgba(23, 27, 36, 0.12);
+  --accent: #d83a2e;
+  --accent-2: #087da1;
   --success: #2fbf71;
-  --warn: #ff8a80;
-  --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  --warn: #b42318;
+  --shadow: 0 22px 70px rgba(31, 41, 55, 0.12);
 }
 
 * {
@@ -30,8 +30,8 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 20% -10%, rgba(230, 77, 60, 0.18), transparent 34rem),
-    radial-gradient(circle at 84% 8%, rgba(25, 167, 206, 0.14), transparent 30rem),
+    radial-gradient(circle at 18% -10%, rgba(216, 58, 46, 0.12), transparent 34rem),
+    radial-gradient(circle at 84% 5%, rgba(8, 125, 161, 0.11), transparent 30rem),
     var(--bg);
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -72,7 +72,7 @@ a {
   height: 100vh;
   padding: 24px 18px;
   border-right: 1px solid var(--line);
-  background: rgba(8, 9, 13, 0.82);
+  background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(18px);
 }
 
@@ -228,12 +228,12 @@ form button[type="submit"] {
 
 .icon-button:hover,
 .secondary-action:hover {
-  background: #2b3445;
+  background: #d6dee9;
 }
 
 .primary-action:hover,
 form button[type="submit"]:hover {
-  background: #f05b4a;
+  background: #bd2e24;
 }
 
 button:disabled {
@@ -284,7 +284,7 @@ a:focus-visible {
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(17, 20, 27, 0.82);
+  background: rgba(255, 255, 255, 0.9);
   box-shadow: var(--shadow);
 }
 
@@ -315,7 +315,7 @@ a:focus-visible {
 
 .video-description {
   margin: 18px 0 0;
-  color: #dce2ec;
+  color: #303746;
   line-height: 1.55;
 }
 
@@ -358,7 +358,7 @@ a:focus-visible {
 
 .shelf h3 {
   margin-bottom: 12px;
-  color: #dfe5ef;
+  color: #303746;
 }
 
 .media-row {
@@ -381,10 +381,11 @@ a:focus-visible {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(24, 29, 38, 0.86);
+  background: rgba(255, 255, 255, 0.84);
   color: var(--text);
+  box-shadow: 0 10px 30px rgba(31, 41, 55, 0.08);
   text-align: left;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
 .collection-card:hover,
@@ -392,8 +393,9 @@ a:focus-visible {
 .file-card:hover,
 .back-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.26);
-  background: rgba(34, 41, 56, 0.94);
+  border-color: rgba(216, 58, 46, 0.34);
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(31, 41, 55, 0.13);
 }
 
 .collection-card {
@@ -407,7 +409,7 @@ a:focus-visible {
   place-items: center;
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(230, 77, 60, 0.95), rgba(25, 167, 206, 0.86)),
+    linear-gradient(135deg, rgba(216, 58, 46, 0.9), rgba(8, 125, 161, 0.82)),
     var(--surface-3);
   color: #fff;
   font-size: 2.4rem;
@@ -447,8 +449,8 @@ a:focus-visible {
   place-items: center;
   border-radius: 8px 8px 0 0;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent),
-    #151a24;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent),
+    #dbe3ee;
 }
 
 .video-thumb span {
@@ -457,7 +459,7 @@ a:focus-visible {
   height: 48px;
   place-items: center;
   border-radius: 999px;
-  background: rgba(230, 77, 60, 0.95);
+  background: rgba(216, 58, 46, 0.95);
   color: #fff;
 }
 
@@ -479,15 +481,15 @@ a:focus-visible {
   height: 96px;
   place-items: center;
   border-radius: 8px;
-  background: #2c3444;
-  color: #dce2ec;
+  background: #dfe6ef;
+  color: #445064;
   font-size: 0.8rem;
   font-weight: 950;
 }
 
 .file-icon.pdf {
-  background: #472528;
-  color: #ffb0a8;
+  background: #fee4df;
+  color: #b42318;
 }
 
 .quick-row {
@@ -508,7 +510,7 @@ a:focus-visible {
   padding: 22px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(24, 29, 38, 0.86);
+  background: rgba(255, 255, 255, 0.84);
 }
 
 .empty-state span {
@@ -525,8 +527,8 @@ a:focus-visible {
   padding: 24px;
   overflow-y: auto;
   border-left: 1px solid var(--line);
-  background: rgba(17, 20, 27, 0.98);
-  box-shadow: -24px 0 80px rgba(0, 0, 0, 0.44);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: -24px 0 80px rgba(31, 41, 55, 0.18);
   transform: translateX(105%);
   transition: transform 180ms ease;
 }
@@ -569,7 +571,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 12px;
-  background: #0c0f15;
+  background: #fff;
   color: var(--text);
 }
 
@@ -600,7 +602,7 @@ input[type="file"] {
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(8, 9, 13, 0.56);
+  background: #f8fafc;
 }
 
 .metadata-links {
