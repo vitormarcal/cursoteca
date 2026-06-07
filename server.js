@@ -109,6 +109,16 @@ async function listDirectory(relativeDir = '') {
   };
 }
 
+async function listCourses() {
+  await fs.mkdir(filesDir, { recursive: true });
+  const entries = await fs.readdir(filesDir, { withFileTypes: true });
+
+  return entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 function cleanRelativePath(value) {
   return String(value || '')
     .normalize('NFC')
@@ -116,6 +126,17 @@ function cleanRelativePath(value) {
     .map(cleanPathPart)
     .filter(Boolean)
     .join(path.sep);
+}
+
+function buildCoursePath(course, folder) {
+  const cleanCourse = cleanPathPart(course);
+  const cleanFolder = cleanRelativePath(folder);
+
+  if (!cleanCourse) {
+    return cleanFolder;
+  }
+
+  return cleanRelativePath(path.join(cleanCourse, cleanFolder));
 }
 
 function splitBuffer(buffer, delimiter) {
@@ -227,7 +248,7 @@ async function handleDownload(req, res) {
   try {
     const body = await readBody(req);
     const form = new URLSearchParams(body);
-    const folder = cleanRelativePath(form.get('folder'));
+    const folder = buildCoursePath(form.get('course'), form.get('lessonFolder') || form.get('folder'));
     const lessonName = cleanPathPart(form.get('lessonName'));
     const url = String(form.get('url') || '').trim();
 
@@ -260,6 +281,31 @@ async function handleDownload(req, res) {
   }
 }
 
+async function handleCreateCourse(req, res) {
+  try {
+    const body = await readBody(req);
+    const form = new URLSearchParams(body);
+    const name = cleanPathPart(form.get('courseName'));
+
+    if (!name) {
+      return sendJson(res, 400, { error: 'Informe o nome do curso.' });
+    }
+
+    await fs.mkdir(safeJoin(filesDir, name), { recursive: true });
+    sendJson(res, 200, {
+      ok: true,
+      message: 'Curso cadastrado.',
+      course: name,
+      courses: await listCourses(),
+      listing: await listDirectory(name)
+    });
+  } catch (error) {
+    sendJson(res, 500, {
+      error: error.message || 'Falha ao cadastrar curso.'
+    });
+  }
+}
+
 async function handlePdfUpload(req, res) {
   try {
     const contentType = req.headers['content-type'] || '';
@@ -272,9 +318,11 @@ async function handlePdfUpload(req, res) {
 
     const body = await readRawBody(req, 1024 * 1024 * 200);
     const parts = parseMultipart(body, boundary);
-    const folder = cleanRelativePath(
+    const pdfFolder = cleanRelativePath(
       parts.find((part) => part.name === 'pdfFolder')?.content.toString('utf8') || ''
     );
+    const pdfCourse = parts.find((part) => part.name === 'pdfCourse')?.content.toString('utf8') || '';
+    const folder = buildCoursePath(pdfCourse, pdfFolder);
     const pdfs = parts.filter((part) => part.name === 'pdfFiles' && part.filename && part.content.length);
 
     if (!pdfs.length) {
@@ -326,6 +374,11 @@ async function serveStatic(req, res) {
     return;
   }
 
+  if (pathname === '/api/courses') {
+    sendJson(res, 200, { courses: await listCourses() });
+    return;
+  }
+
   if (pathname.startsWith('/files/')) {
     const relative = pathname.slice('/files/'.length);
     const file = safeJoin(filesDir, cleanRelativePath(relative));
@@ -363,6 +416,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && req.url === '/api/upload-pdfs') {
       await handlePdfUpload(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/courses') {
+      await handleCreateCourse(req, res);
       return;
     }
 

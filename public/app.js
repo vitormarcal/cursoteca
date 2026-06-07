@@ -1,16 +1,22 @@
 const form = document.querySelector('#download-form');
 const pdfForm = document.querySelector('#pdf-form');
+const courseForm = document.querySelector('#course-form');
 const submitButton = document.querySelector('#submit-button');
 const pdfButton = document.querySelector('#pdf-button');
+const courseButton = document.querySelector('#course-button');
 const refreshButton = document.querySelector('#refresh-button');
 const statusEl = document.querySelector('#status');
 const pdfStatusEl = document.querySelector('#pdf-status');
+const courseStatusEl = document.querySelector('#course-status');
 const fileList = document.querySelector('#file-list');
 const breadcrumb = document.querySelector('#breadcrumb');
-const folderInput = document.querySelector('#folder');
+const courseSelect = document.querySelector('#course');
+const pdfCourseSelect = document.querySelector('#pdfCourse');
+const lessonFolderInput = document.querySelector('#lessonFolder');
 const pdfFolderInput = document.querySelector('#pdfFolder');
 
 let currentDir = '';
+let courses = [];
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -28,12 +34,74 @@ function setPdfStatus(message, isError = false) {
   pdfStatusEl.classList.toggle('error', isError);
 }
 
+function setCourseStatus(message, isError = false) {
+  courseStatusEl.textContent = message;
+  courseStatusEl.classList.toggle('error', isError);
+}
+
 function pathLabel(value) {
   return value || 'arquivos';
 }
 
 function fileHref(filePath) {
   return `/files/${filePath.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+function selectedCourse() {
+  return courseSelect.value || pdfCourseSelect.value || courses[0] || '';
+}
+
+function setSelectValue(select, value) {
+  if (value && !courses.includes(value)) {
+    courses.push(value);
+    courses.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    renderCourseOptions(value);
+    return;
+  }
+
+  select.value = value || courses[0] || '';
+}
+
+function renderCourseOptions(preferred = selectedCourse()) {
+  for (const select of [courseSelect, pdfCourseSelect]) {
+    select.replaceChildren();
+
+    if (!courses.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Cadastre um curso';
+      select.append(option);
+      select.disabled = true;
+      continue;
+    }
+
+    select.disabled = false;
+    for (const course of courses) {
+      const option = document.createElement('option');
+      option.value = course;
+      option.textContent = course;
+      select.append(option);
+    }
+    select.value = preferred && courses.includes(preferred) ? preferred : courses[0];
+  }
+}
+
+function syncFormsWithDirectory() {
+  const parts = currentDir.split('/').filter(Boolean);
+
+  if (parts.length) {
+    setSelectValue(courseSelect, parts[0]);
+    setSelectValue(pdfCourseSelect, parts[0]);
+    lessonFolderInput.value = parts.slice(1).join('/');
+    pdfFolderInput.value = parts.slice(1).join('/');
+    return;
+  }
+
+  const course = selectedCourse();
+  setSelectValue(courseSelect, course);
+  setSelectValue(pdfCourseSelect, course);
+  lessonFolderInput.value = '';
+  pdfFolderInput.value = '';
 }
 
 function renderBreadcrumb(current) {
@@ -70,8 +138,7 @@ function renderListing(listing) {
   const directories = listing.directories || [];
   const files = listing.files || [];
   currentDir = listing.current || '';
-  folderInput.value = currentDir;
-  pdfFolderInput.value = currentDir;
+  syncFormsWithDirectory();
   renderBreadcrumb(currentDir);
   fileList.replaceChildren();
 
@@ -129,6 +196,43 @@ async function loadDirectory(dir = currentDir) {
   renderListing(data.listing || { current: dir, directories: [], files: [] });
 }
 
+async function loadCourses(preferred) {
+  const response = await fetch('/api/courses');
+  const data = await response.json();
+  courses = data.courses || [];
+  renderCourseOptions(preferred);
+  syncFormsWithDirectory();
+}
+
+courseForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  courseButton.disabled = true;
+  setCourseStatus('Criando...');
+
+  try {
+    const response = await fetch('/api/courses', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(new FormData(courseForm))
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Falha ao cadastrar curso.');
+    }
+
+    courses = data.courses || courses;
+    renderCourseOptions(data.course);
+    renderListing(data.listing || { current: data.course, directories: [], files: [] });
+    setCourseStatus(data.message || 'Curso cadastrado.');
+    courseForm.reset();
+  } catch (error) {
+    setCourseStatus(error.message, true);
+  } finally {
+    courseButton.disabled = false;
+  }
+});
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   submitButton.disabled = true;
@@ -149,8 +253,8 @@ form.addEventListener('submit', async (event) => {
     renderListing(data.listing || { current: currentDir, directories: [], files: [] });
     setStatus(data.message || 'Download concluido.');
     form.reset();
-    folderInput.value = currentDir;
-    folderInput.focus();
+    syncFormsWithDirectory();
+    lessonFolderInput.focus();
   } catch (error) {
     setStatus(error.message, true);
   } finally {
@@ -177,7 +281,7 @@ pdfForm.addEventListener('submit', async (event) => {
     renderListing(data.listing || { current: currentDir, directories: [], files: [] });
     setPdfStatus(data.message || 'PDFs adicionados.');
     pdfForm.reset();
-    pdfFolderInput.value = currentDir;
+    syncFormsWithDirectory();
   } catch (error) {
     setPdfStatus(error.message, true);
   } finally {
@@ -189,4 +293,12 @@ refreshButton.addEventListener('click', () => {
   loadDirectory().catch((error) => setStatus(error.message, true));
 });
 
-loadDirectory().catch((error) => setStatus(error.message, true));
+courseSelect.addEventListener('change', () => {
+  pdfCourseSelect.value = courseSelect.value;
+});
+
+pdfCourseSelect.addEventListener('change', () => {
+  courseSelect.value = pdfCourseSelect.value;
+});
+
+Promise.all([loadCourses(), loadDirectory()]).catch((error) => setStatus(error.message, true));

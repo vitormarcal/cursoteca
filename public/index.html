@@ -14,10 +14,30 @@
           <h1 id="page-title">Baixar aula</h1>
         </div>
 
+        <form id="course-form" class="form course-form" autocomplete="off">
+          <div class="field full">
+            <label for="courseName">Cadastrar curso</label>
+            <input id="courseName" name="courseName" type="text" required placeholder="Gramática Essencial">
+          </div>
+
+          <div class="actions">
+            <button id="course-button" type="submit" class="course-button">
+              <span class="button-icon" aria-hidden="true">+</span>
+              <span>Criar curso</span>
+            </button>
+            <p id="course-status" class="status" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+
         <form id="download-form" class="form" autocomplete="off">
           <div class="field">
-            <label for="folder">Pasta em arquivos</label>
-            <input id="folder" name="folder" type="text" required placeholder="Capítulo 4 - Sintaxe">
+            <label for="course">Curso</label>
+            <select id="course" name="course" required></select>
+          </div>
+
+          <div class="field">
+            <label for="lessonFolder">Pasta da aula</label>
+            <input id="lessonFolder" name="lessonFolder" type="text" required placeholder="Capítulo 4 - Sintaxe">
           </div>
 
           <div class="field">
@@ -41,11 +61,16 @@
 
         <form id="pdf-form" class="form pdf-form" enctype="multipart/form-data">
           <div class="field">
+            <label for="pdfCourse">Curso</label>
+            <select id="pdfCourse" name="pdfCourse" required></select>
+          </div>
+
+          <div class="field">
             <label for="pdfFolder">Pasta dos PDFs</label>
             <input id="pdfFolder" name="pdfFolder" type="text" placeholder="Capítulo 4 - Sintaxe">
           </div>
 
-          <div class="field">
+          <div class="field full">
             <label for="pdfFiles">PDFs da aula</label>
             <input id="pdfFiles" name="pdfFiles" type="file" accept="application/pdf,.pdf" multiple required>
           </div>
