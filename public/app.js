@@ -48,6 +48,150 @@ function fileHref(filePath) {
   return `/files/${filePath.split('/').map(encodeURIComponent).join('/')}`;
 }
 
+function isVideo(file) {
+  return file.name.toLowerCase().endsWith('.mp4');
+}
+
+function linkRowsToLinks(container) {
+  return [...container.querySelectorAll('.metadata-link-row')]
+    .map((row) => ({
+      title: row.querySelector('[name="linkTitle"]').value,
+      url: row.querySelector('[name="linkUrl"]').value
+    }))
+    .filter((link) => link.title.trim() || link.url.trim());
+}
+
+function appendLinkRow(container, link = {}) {
+  const row = document.createElement('div');
+  row.className = 'metadata-link-row';
+
+  const title = document.createElement('input');
+  title.name = 'linkTitle';
+  title.type = 'text';
+  title.placeholder = 'Nome do link';
+  title.value = link.title || '';
+
+  const url = document.createElement('input');
+  url.name = 'linkUrl';
+  url.type = 'url';
+  url.placeholder = 'https://...';
+  url.value = link.url || '';
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'icon-action';
+  remove.textContent = 'Remover';
+  remove.addEventListener('click', () => row.remove());
+
+  row.append(title, url, remove);
+  container.append(row);
+}
+
+function renderVideoDetails(file, parent) {
+  const metadata = file.metadata || {};
+  const description = metadata.description || '';
+  const links = metadata.links || [];
+
+  if (description) {
+    const text = document.createElement('p');
+    text.className = 'video-description';
+    text.textContent = description;
+    parent.append(text);
+  }
+
+  if (links.length) {
+    const list = document.createElement('div');
+    list.className = 'video-links';
+    for (const link of links) {
+      const anchor = document.createElement('a');
+      anchor.href = link.url;
+      anchor.target = '_blank';
+      anchor.rel = 'noreferrer';
+      anchor.textContent = link.title || link.url;
+      list.append(anchor);
+    }
+    parent.append(list);
+  }
+}
+
+function createMetadataEditor(file) {
+  const form = document.createElement('form');
+  form.className = 'metadata-form';
+  form.hidden = true;
+
+  const descriptionLabel = document.createElement('label');
+  descriptionLabel.textContent = 'Descrição do vídeo';
+
+  const description = document.createElement('textarea');
+  description.name = 'description';
+  description.rows = 4;
+  description.value = file.metadata?.description || '';
+
+  const linksLabel = document.createElement('label');
+  linksLabel.textContent = 'Links';
+
+  const linksContainer = document.createElement('div');
+  linksContainer.className = 'metadata-links';
+  for (const link of file.metadata?.links || []) {
+    appendLinkRow(linksContainer, link);
+  }
+  if (!linksContainer.children.length) {
+    appendLinkRow(linksContainer);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'metadata-actions';
+
+  const addLink = document.createElement('button');
+  addLink.type = 'button';
+  addLink.className = 'secondary compact';
+  addLink.textContent = 'Adicionar link';
+  addLink.addEventListener('click', () => appendLinkRow(linksContainer));
+
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.className = 'compact';
+  save.textContent = 'Salvar detalhes';
+
+  const status = document.createElement('span');
+  status.className = 'metadata-status';
+
+  actions.append(addLink, save, status);
+  form.append(descriptionLabel, description, linksLabel, linksContainer, actions);
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    save.disabled = true;
+    status.textContent = 'Salvando...';
+
+    try {
+      const response = await fetch('/api/media-metadata', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          path: file.path,
+          description: description.value,
+          links: linkRowsToLinks(linksContainer)
+        })
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Falha ao salvar detalhes.');
+      }
+
+      renderListing(data.listing || { current: currentDir, directories: [], files: [] });
+      setStatus(data.message || 'Detalhes salvos.');
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  return form;
+}
+
 function selectedCourse() {
   return courseSelect.value || pdfCourseSelect.value || courses[0]?.name || '';
 }
@@ -221,6 +365,22 @@ function renderListing(listing) {
     meta.textContent = `${pathLabel(currentDir)} · ${formatSize(file.size)}`;
 
     main.append(link, meta);
+
+    if (isVideo(file)) {
+      renderVideoDetails(file, main);
+      const editor = createMetadataEditor(file);
+      const details = document.createElement('button');
+      details.type = 'button';
+      details.className = 'secondary compact';
+      details.textContent = 'Detalhes';
+      details.addEventListener('click', () => {
+        editor.hidden = !editor.hidden;
+      });
+      row.append(main, details);
+      fileList.append(row, editor);
+      continue;
+    }
+
     row.append(main);
     fileList.append(row);
   }

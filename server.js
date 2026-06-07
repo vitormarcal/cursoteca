@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = __dirname;
 const filesDir = path.join(rootDir, 'arquivos');
 const courseMetaPath = path.join(filesDir, '.courses.json');
+const mediaMetaPath = path.join(filesDir, '.media.json');
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 
@@ -71,6 +72,7 @@ async function listDirectory(relativeDir = '') {
   const cleanRelative = cleanRelativePath(relativeDir);
   const currentDir = safeJoin(filesDir, cleanRelative);
   const entries = await fs.readdir(currentDir, { withFileTypes: true });
+  const mediaMetadata = await readMediaMetadata();
   const directories = [];
   const files = [];
 
@@ -94,7 +96,8 @@ async function listDirectory(relativeDir = '') {
         name: entry.name,
         path: relative,
         size: stat.size,
-        modifiedAt: stat.mtime.toISOString()
+        modifiedAt: stat.mtime.toISOString(),
+        metadata: mediaMetadata.files[relative] || null
       });
     }
   }
@@ -148,6 +151,27 @@ async function readCourseMetadata() {
 async function writeCourseMetadata(metadata) {
   await fs.mkdir(filesDir, { recursive: true });
   await fs.writeFile(courseMetaPath, `${JSON.stringify(metadata, null, 2)}\n`);
+}
+
+async function readMediaMetadata() {
+  try {
+    const raw = await fs.readFile(mediaMetaPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || !parsed.files || typeof parsed.files !== 'object') {
+      return { version: 1, files: {} };
+    }
+    return { version: 1, files: parsed.files };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return { version: 1, files: {} };
+    }
+    throw error;
+  }
+}
+
+async function writeMediaMetadata(metadata) {
+  await fs.mkdir(filesDir, { recursive: true });
+  await fs.writeFile(mediaMetaPath, `${JSON.stringify(metadata, null, 2)}\n`);
 }
 
 function cleanRelativePath(value) {
@@ -411,6 +435,77 @@ async function handlePdfUpload(req, res) {
   }
 }
 
+function normalizeLinks(value) {
+  const links = Array.isArray(value) ? value : [];
+
+  return links
+    .map((link) => ({
+      title: String(link?.title || '').trim().slice(0, 200),
+      url: String(link?.url || '').trim()
+    }))
+    .filter((link) => {
+      if (!link.url) return false;
+      try {
+        const parsed = new URL(link.url);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, 50);
+}
+
+async function handleMediaMetadata(req, res) {
+  try {
+    const body = await readRawBody(req, 1024 * 128);
+    const data = JSON.parse(body.toString('utf8') || '{}');
+    const filePath = cleanRelativePath(data.path);
+
+    if (!filePath || path.extname(filePath).toLowerCase() !== '.mp4') {
+      return sendJson(res, 400, { error: 'Informe um video valido.' });
+    }
+
+    const absolute = safeJoin(filesDir, filePath);
+    const stat = await fs.stat(absolute);
+    if (!stat.isFile()) {
+      return sendJson(res, 404, { error: 'Video nao encontrado.' });
+    }
+
+    const metadata = await readMediaMetadata();
+    const now = new Date().toISOString();
+    const description = String(data.description || '').trim().slice(0, 8000);
+    const links = normalizeLinks(data.links);
+
+    if (!description && !links.length) {
+      delete metadata.files[filePath];
+    } else {
+      metadata.files[filePath] = {
+        description,
+        links,
+        updatedAt: now
+      };
+    }
+
+    await writeMediaMetadata(metadata);
+
+    sendJson(res, 200, {
+      ok: true,
+      message: 'Detalhes do video salvos.',
+      path: filePath,
+      metadata: metadata.files[filePath] || null,
+      listing: await listDirectory(path.dirname(filePath).replace(/^\.$/, ''))
+    });
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      sendJson(res, 400, { error: 'JSON invalido.' });
+      return;
+    }
+    sendJson(res, 500, {
+      error: error.message || 'Falha ao salvar detalhes do video.'
+    });
+  }
+}
+
 async function serveStatic(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = decodeURIComponent(url.pathname);
@@ -474,6 +569,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && req.url === '/api/courses') {
       await handleCreateCourse(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/media-metadata') {
+      await handleMediaMetadata(req, res);
       return;
     }
 
