@@ -10,6 +10,7 @@ const pdfStatusEl = document.querySelector('#pdf-status');
 const courseStatusEl = document.querySelector('#course-status');
 const fileList = document.querySelector('#file-list');
 const breadcrumb = document.querySelector('#breadcrumb');
+const courseDescriptionEl = document.querySelector('#course-description');
 const courseSelect = document.querySelector('#course');
 const pdfCourseSelect = document.querySelector('#pdfCourse');
 const lessonFolderInput = document.querySelector('#lessonFolder');
@@ -48,18 +49,51 @@ function fileHref(filePath) {
 }
 
 function selectedCourse() {
-  return courseSelect.value || pdfCourseSelect.value || courses[0] || '';
+  return courseSelect.value || pdfCourseSelect.value || courses[0]?.name || '';
+}
+
+function normalizeCourse(course) {
+  if (typeof course === 'string') {
+    return { name: course, description: '' };
+  }
+  return {
+    name: course?.name || '',
+    description: course?.description || '',
+    createdAt: course?.createdAt || null,
+    updatedAt: course?.updatedAt || null
+  };
+}
+
+function courseExists(name) {
+  return courses.some((course) => course.name === name);
+}
+
+function courseByName(name) {
+  return courses.find((course) => course.name === name);
+}
+
+function setCourses(nextCourses) {
+  courses = (nextCourses || [])
+    .map(normalizeCourse)
+    .filter((course) => course.name)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+function updateCourseDescription() {
+  const topLevel = currentDir.split('/').filter(Boolean)[0];
+  const course = courseByName(topLevel || selectedCourse());
+  courseDescriptionEl.textContent = course?.description || '';
 }
 
 function setSelectValue(select, value) {
-  if (value && !courses.includes(value)) {
-    courses.push(value);
-    courses.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  if (value && !courseExists(value)) {
+    courses.push({ name: value, description: '' });
+    courses.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     renderCourseOptions(value);
     return;
   }
 
-  select.value = value || courses[0] || '';
+  select.value = value || courses[0]?.name || '';
 }
 
 function renderCourseOptions(preferred = selectedCourse()) {
@@ -78,12 +112,13 @@ function renderCourseOptions(preferred = selectedCourse()) {
     select.disabled = false;
     for (const course of courses) {
       const option = document.createElement('option');
-      option.value = course;
-      option.textContent = course;
+      option.value = course.name;
+      option.textContent = course.name;
       select.append(option);
     }
-    select.value = preferred && courses.includes(preferred) ? preferred : courses[0];
+    select.value = preferred && courseExists(preferred) ? preferred : courses[0].name;
   }
+  updateCourseDescription();
 }
 
 function syncFormsWithDirectory() {
@@ -140,6 +175,7 @@ function renderListing(listing) {
   currentDir = listing.current || '';
   syncFormsWithDirectory();
   renderBreadcrumb(currentDir);
+  updateCourseDescription();
   fileList.replaceChildren();
 
   if (currentDir) {
@@ -199,7 +235,7 @@ async function loadDirectory(dir = currentDir) {
 async function loadCourses(preferred) {
   const response = await fetch('/api/courses');
   const data = await response.json();
-  courses = data.courses || [];
+  setCourses(data.courses);
   renderCourseOptions(preferred);
   syncFormsWithDirectory();
 }
@@ -221,9 +257,9 @@ courseForm.addEventListener('submit', async (event) => {
       throw new Error(data.error || 'Falha ao cadastrar curso.');
     }
 
-    courses = data.courses || courses;
-    renderCourseOptions(data.course);
-    renderListing(data.listing || { current: data.course, directories: [], files: [] });
+    setCourses(data.courses || courses);
+    renderCourseOptions(data.course?.name);
+    renderListing(data.listing || { current: data.course?.name, directories: [], files: [] });
     setCourseStatus(data.message || 'Curso cadastrado.');
     courseForm.reset();
   } catch (error) {
@@ -295,10 +331,12 @@ refreshButton.addEventListener('click', () => {
 
 courseSelect.addEventListener('change', () => {
   pdfCourseSelect.value = courseSelect.value;
+  updateCourseDescription();
 });
 
 pdfCourseSelect.addEventListener('change', () => {
   courseSelect.value = pdfCourseSelect.value;
+  updateCourseDescription();
 });
 
 Promise.all([loadCourses(), loadDirectory()]).catch((error) => setStatus(error.message, true));

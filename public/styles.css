@@ -26,7 +26,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -109,7 +110,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 48px;
   border: 1px solid var(--line);
@@ -119,12 +121,19 @@ select {
   color: var(--text);
 }
 
+textarea {
+  min-height: 88px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
 input[type="file"] {
   padding: 10px 12px;
 }
 
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible,
 a:focus-visible {
   outline: 3px solid rgba(23, 107, 92, 0.24);
@@ -229,6 +238,14 @@ button:disabled {
   min-height: 28px;
   margin-top: 7px;
   color: var(--muted);
+}
+
+.course-description {
+  margin: 6px 0 0;
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .crumb {

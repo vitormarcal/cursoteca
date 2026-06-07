@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = __dirname;
 const filesDir = path.join(rootDir, 'arquivos');
+const courseMetaPath = path.join(filesDir, '.courses.json');
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 
@@ -112,11 +113,41 @@ async function listDirectory(relativeDir = '') {
 async function listCourses() {
   await fs.mkdir(filesDir, { recursive: true });
   const entries = await fs.readdir(filesDir, { withFileTypes: true });
+  const metadata = await readCourseMetadata();
 
   return entries
     .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
-    .map((entry) => entry.name)
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    .map((entry) => {
+      const saved = metadata.courses[entry.name] || {};
+      return {
+        name: entry.name,
+        description: saved.description || '',
+        createdAt: saved.createdAt || null,
+        updatedAt: saved.updatedAt || null
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+async function readCourseMetadata() {
+  try {
+    const raw = await fs.readFile(courseMetaPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || !parsed.courses || typeof parsed.courses !== 'object') {
+      return { version: 1, courses: {} };
+    }
+    return { version: 1, courses: parsed.courses };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return { version: 1, courses: {} };
+    }
+    throw error;
+  }
+}
+
+async function writeCourseMetadata(metadata) {
+  await fs.mkdir(filesDir, { recursive: true });
+  await fs.writeFile(courseMetaPath, `${JSON.stringify(metadata, null, 2)}\n`);
 }
 
 function cleanRelativePath(value) {
@@ -286,16 +317,31 @@ async function handleCreateCourse(req, res) {
     const body = await readBody(req);
     const form = new URLSearchParams(body);
     const name = cleanPathPart(form.get('courseName'));
+    const description = String(form.get('courseDescription') || '').trim().slice(0, 4000);
 
     if (!name) {
       return sendJson(res, 400, { error: 'Informe o nome do curso.' });
     }
 
     await fs.mkdir(safeJoin(filesDir, name), { recursive: true });
+    const metadata = await readCourseMetadata();
+    const now = new Date().toISOString();
+    metadata.courses[name] = {
+      description,
+      createdAt: metadata.courses[name]?.createdAt || now,
+      updatedAt: now
+    };
+    await writeCourseMetadata(metadata);
+
     sendJson(res, 200, {
       ok: true,
       message: 'Curso cadastrado.',
-      course: name,
+      course: {
+        name,
+        description,
+        createdAt: metadata.courses[name].createdAt,
+        updatedAt: now
+      },
       courses: await listCourses(),
       listing: await listDirectory(name)
     });

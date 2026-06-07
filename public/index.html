@@ -15,9 +15,14 @@
         </div>
 
         <form id="course-form" class="form course-form" autocomplete="off">
-          <div class="field full">
+          <div class="field">
             <label for="courseName">Cadastrar curso</label>
             <input id="courseName" name="courseName" type="text" required placeholder="Gramática Essencial">
+          </div>
+
+          <div class="field">
+            <label for="courseDescription">Descrição</label>
+            <textarea id="courseDescription" name="courseDescription" rows="3" placeholder="Curso principal de gramática e aulas complementares"></textarea>
           </div>
 
           <div class="actions">
@@ -90,6 +95,7 @@
           <div>
             <h2 id="library-title">Arquivos</h2>
             <nav id="breadcrumb" class="breadcrumb" aria-label="Caminho atual"></nav>
+            <p id="course-description" class="course-description"></p>
           </div>
           <button id="refresh-button" type="button" class="secondary">Atualizar</button>
         </div>
