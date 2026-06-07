@@ -213,15 +213,55 @@ O destino final é:
 arquivos/<course>/<lessonFolder>/<lessonName>.<ext>
 ```
 
-Comando equivalente:
+O app hoje cobre duas formas de download com `yt-dlp`.
+
+#### Download Hotmart e links gerais
+
+Quando a URL nao e do Vimeo/Vimeocdn, o app usa o referer da Hotmart e tenta baixar
+o melhor video ate 1080p com o melhor audio disponivel. Esse modo atende o fluxo
+original de aulas embedadas/servidas pela Hotmart e tambem funciona como fallback
+para URLs comuns aceitas pelo `yt-dlp`.
 
 ```bash
 yt-dlp \
   -o "<destino>/<lessonName>.%(ext)s" \
-  --add-headers "Referer:https://player.hotmart.com/" \
-  --format "best[height=1080]" \
+  --referer "https://player.hotmart.com/" \
+  -N 15 \
+  --format "bv*[vcodec^=avc1][height<=1080]+ba/bv*[height<=1080]+ba/b[height<=1080]/best" \
+  -S "codec:avc,res,ext:mp4:m4a" \
+  --merge-output-format mp4 \
+  --remux-video mp4 \
+  --postprocessor-args "ffmpeg:-movflags +faststart" \
   "<url>"
 ```
+
+#### Download Vimeo/Vimeocdn
+
+Quando a URL e `player.vimeo.com`, `vimeo.com` ou `vimeocdn.com`, o app usa referer
+do Vimeo. Isso cobre tanto a URL do player quanto manifests como
+`vod-adaptive-*.vimeocdn.com/.../playlist.json`, que trazem video e audio separados
+em segmentos DASH.
+
+```bash
+yt-dlp \
+  -o "<destino>/<lessonName>.%(ext)s" \
+  --referer "https://player.vimeo.com/" \
+  -N 15 \
+  --format "bv*[vcodec^=avc1][height<=1080]+ba/bv*[height<=1080]+ba/b[height<=1080]/best" \
+  -S "codec:avc,res,ext:mp4:m4a" \
+  --merge-output-format mp4 \
+  --remux-video mp4 \
+  --postprocessor-args "ffmpeg:-movflags +faststart" \
+  "<url>"
+```
+
+Para URLs `https://player.vimeo.com/video/<id>`, o referer usado e a propria URL do
+player. Para URLs diretas de manifesto/CDN do Vimeo, o referer usado e
+`https://player.vimeo.com/`.
+
+O merge/remux depende de `ffmpeg` disponivel no `PATH`. URLs assinadas do Vimeo
+podem expirar; se um `playlist.json` antigo retornar `403`, gere/copie uma URL nova
+da pagina/player original.
 
 ### `POST /api/upload-pdfs`
 

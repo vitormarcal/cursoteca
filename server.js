@@ -270,15 +270,7 @@ async function uniqueFilePath(folderPath, fileName) {
 function runDownload({ folder, lessonName, url }) {
   return new Promise((resolve, reject) => {
     const output = path.join(folder, `${lessonName}.%(ext)s`);
-    const args = [
-      '-o',
-      output,
-      '--add-headers',
-      'Referer:https://player.hotmart.com/',
-      '--format',
-      'best[height=1080]',
-      url
-    ];
+    const args = buildDownloadArgs({ output, url });
 
     const child = spawn('yt-dlp', args, {
       cwd: rootDir,
@@ -304,6 +296,45 @@ function runDownload({ folder, lessonName, url }) {
       }
     });
   });
+}
+
+function buildDownloadArgs({ output, url }) {
+  const referer = downloadReferer(url);
+
+  return [
+    '-o',
+    output,
+    '--referer',
+    referer,
+    '-N',
+    '15',
+    '--format',
+    'bv*[vcodec^=avc1][height<=1080]+ba/bv*[height<=1080]+ba/b[height<=1080]/best',
+    '-S',
+    'codec:avc,res,ext:mp4:m4a',
+    '--merge-output-format',
+    'mp4',
+    '--remux-video',
+    'mp4',
+    '--postprocessor-args',
+    'ffmpeg:-movflags +faststart',
+    url
+  ];
+}
+
+function downloadReferer(url) {
+  const parsed = new URL(url);
+  const host = parsed.hostname.toLowerCase();
+
+  if (host === 'player.vimeo.com') {
+    return url;
+  }
+
+  if (host.endsWith('.vimeocdn.com') || host === 'vimeocdn.com' || host.endsWith('.vimeo.com')) {
+    return 'https://player.vimeo.com/';
+  }
+
+  return 'https://player.hotmart.com/';
 }
 
 async function handleDownload(req, res) {
