@@ -448,7 +448,7 @@ a:focus-visible {
 }
 
 .collection-card {
-  grid-template-rows: 132px auto auto;
+  grid-template-rows: 132px auto auto auto;
   min-height: 230px;
   padding: 12px;
 }
@@ -471,6 +471,18 @@ a:focus-visible {
   margin-top: 12px;
   overflow-wrap: anywhere;
   line-height: 1.2;
+}
+
+.type-badge {
+  justify-self: start;
+  margin-top: 10px;
+  border-radius: 6px;
+  padding: 4px 7px;
+  background: var(--surface-2);
+  color: var(--accent-2);
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
 }
 
 .collection-card span:last-child,
@@ -644,6 +656,15 @@ input[type="file"] {
 .status.error {
   color: var(--warn);
   font-weight: 850;
+}
+
+.target-label {
+  min-height: 20px;
+  margin: -2px 0 0;
+  color: var(--accent-2);
+  font-size: 0.86rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
 }
 
 .metadata-form {

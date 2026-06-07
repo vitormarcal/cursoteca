@@ -28,10 +28,15 @@ const videoCourseSelect = document.querySelector('#videoCourse');
 const lessonFolderInput = document.querySelector('#lessonFolder');
 const pdfFolderInput = document.querySelector('#pdfFolder');
 const nodeParentFolderInput = document.querySelector('#nodeParentFolder');
+const nodeTypeSelect = document.querySelector('#nodeType');
 const resourceFolderInput = document.querySelector('#resourceFolder');
 const videoFolderInput = document.querySelector('#videoFolder');
 const pdfLessonPathInput = document.querySelector('#pdfLessonPath');
 const resourceLessonPathInput = document.querySelector('#resourceLessonPath');
+const pdfScopeSelect = document.querySelector('#pdfScope');
+const resourceScopeSelect = document.querySelector('#resourceScope');
+const pdfLessonLabel = document.querySelector('#pdf-lesson-label');
+const resourceLessonLabel = document.querySelector('#resource-lesson-label');
 const pageTitle = document.querySelector('#page-title');
 const libraryHeading = document.querySelector('#library-heading');
 const courseCount = document.querySelector('#course-count');
@@ -46,6 +51,7 @@ const closeManage = document.querySelector('#close-manage');
 let currentDir = '';
 let courses = [];
 let lastListing = null;
+let selectedLesson = null;
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -173,6 +179,8 @@ function syncFormsWithDirectory() {
     nodeParentFolderInput.value = folder;
     resourceFolderInput.value = folder;
     videoFolderInput.value = folder;
+    nodeTypeSelect.value = folder ? 'Módulo' : 'Etapa';
+    if (folder.split('/').filter(Boolean).length >= 1) nodeTypeSelect.value = 'Capítulo';
     return;
   }
   const course = selectedCourse();
@@ -184,6 +192,15 @@ function syncFormsWithDirectory() {
   nodeParentFolderInput.value = '';
   resourceFolderInput.value = '';
   videoFolderInput.value = '';
+  nodeTypeSelect.value = 'Etapa';
+}
+
+function updateLessonTargets() {
+  const label = selectedLesson ? cleanTitle(selectedLesson.name) : 'Nenhuma aula selecionada';
+  pdfLessonPathInput.value = selectedLesson?.path || '';
+  resourceLessonPathInput.value = selectedLesson?.path || '';
+  pdfLessonLabel.textContent = pdfScopeSelect.value === 'lesson' ? label : '';
+  resourceLessonLabel.textContent = resourceScopeSelect.value === 'lesson' ? label : '';
 }
 
 function openManagePanel() {
@@ -234,7 +251,9 @@ function renderListing(listing) {
   const files = listing.files || [];
   currentDir = listing.current || '';
   lastListing = listing;
+  selectedLesson = null;
   syncFormsWithDirectory();
+  updateLessonTargets();
   renderBreadcrumb(currentDir);
   updateCourseDescription();
   nowPlaying.hidden = true;
@@ -324,11 +343,15 @@ function createDirectoryCard(directory) {
   const title = document.createElement('strong');
   title.textContent = directory.name;
 
+  const badge = document.createElement('span');
+  badge.className = 'type-badge';
+  badge.textContent = directory.node?.typeLabel || 'Curso';
+
   const meta = document.createElement('span');
   const nodeLabel = directory.node?.typeLabel ? `${directory.node.typeLabel} · ` : '';
   meta.textContent = directory.node?.description || course?.description || `${nodeLabel}Atualizado em ${formatDate(directory.modifiedAt)}`;
 
-  button.append(art, title, meta);
+  button.append(art, badge, title, meta);
   return button;
 }
 
@@ -386,8 +409,10 @@ function initials(value) {
 function renderPlayer(file) {
   nowPlaying.hidden = false;
   nowPlaying.replaceChildren();
-  pdfLessonPathInput.value = file.path;
-  resourceLessonPathInput.value = file.path;
+  selectedLesson = file;
+  pdfScopeSelect.value = 'lesson';
+  resourceScopeSelect.value = 'lesson';
+  updateLessonTargets();
 
   const video = document.createElement('video');
   video.controls = true;
@@ -728,6 +753,10 @@ videoForm.addEventListener('submit', async (event) => {
 
 pdfForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (pdfScopeSelect.value === 'lesson' && !pdfLessonPathInput.value) {
+    setStatus(pdfStatusEl, 'Selecione uma aula antes de anexar para aula.', true);
+    return;
+  }
   pdfButton.disabled = true;
   setStatus(pdfStatusEl, 'Adicionando...');
   try {
@@ -750,6 +779,10 @@ pdfForm.addEventListener('submit', async (event) => {
 
 resourceForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (resourceScopeSelect.value === 'lesson' && !resourceLessonPathInput.value) {
+    setStatus(resourceStatusEl, 'Selecione uma aula antes de adicionar para aula.', true);
+    return;
+  }
   resourceButton.disabled = true;
   setStatus(resourceStatusEl, 'Adicionando...');
   try {
@@ -804,5 +837,8 @@ videoCourseSelect.addEventListener('change', () => {
   for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect]) select.value = videoCourseSelect.value;
   updateCourseDescription();
 });
+
+pdfScopeSelect.addEventListener('change', updateLessonTargets);
+resourceScopeSelect.addEventListener('change', updateLessonTargets);
 
 Promise.all([loadCourses(), loadDirectory()]).catch((error) => setStatus(statusEl, error.message, true));

@@ -626,6 +626,13 @@ No player, os recursos aparecem em blocos separados:
 - `Materiais de <tipo>: <título>`: recursos de etapas ou unidades ancestrais.
 - `Materiais do curso`: recursos gerais do curso.
 
+Regra de uso da UI:
+
+- Crie seções apenas para níveis navegáveis do curso, como Etapa, Módulo, Capítulo ou Unidade.
+- Não crie uma seção chamada "Aula 01" se ela representa um vídeo; envie o vídeo como aula dentro da seção correta.
+- Para anexar material de uma aula, clique primeiro na aula/vídeo e depois use `Aula selecionada`.
+- Para anexar material geral de um módulo/etapa, navegue até essa seção e use `Seção atual`.
+
 ## Segurança e validação
 
 - `safeJoin()` impede que caminhos escapem de `arquivos/`.

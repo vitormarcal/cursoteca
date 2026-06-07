@@ -82,15 +82,20 @@
         </form>
 
         <form id="node-form" class="form" autocomplete="off">
-          <h3>Criar unidade</h3>
+          <h3>Criar seção</h3>
           <label for="nodeCourse">Curso</label>
           <select id="nodeCourse" name="nodeCourse" required></select>
 
-          <label for="nodeParentFolder">Dentro de</label>
+          <label for="nodeParentFolder">Criar dentro de</label>
           <input id="nodeParentFolder" name="nodeParentFolder" type="text" placeholder="Etapa 1 - Fundação">
 
           <label for="nodeType">Tipo</label>
-          <input id="nodeType" name="nodeType" type="text" required placeholder="Etapa, Módulo, Capítulo">
+          <select id="nodeType" name="nodeType" required>
+            <option value="Etapa">Etapa</option>
+            <option value="Módulo">Módulo</option>
+            <option value="Capítulo">Capítulo</option>
+            <option value="Unidade">Unidade</option>
+          </select>
 
           <label for="nodeTitle">Nome</label>
           <input id="nodeTitle" name="nodeTitle" type="text" required placeholder="Módulo 01">
@@ -107,10 +112,10 @@
           <label for="course">Curso</label>
           <select id="course" name="course" required></select>
 
-          <label for="lessonFolder">Pasta da aula</label>
+          <label for="lessonFolder">Seção da aula</label>
           <input id="lessonFolder" name="lessonFolder" type="text" required placeholder="Capítulo 4 - Sintaxe">
 
-          <label for="lessonName">Nome do arquivo</label>
+          <label for="lessonName">Nome da aula</label>
           <input id="lessonName" name="lessonName" type="text" required placeholder="Aula 5 - Sintaxe">
 
           <label for="url">URL da aula</label>
@@ -146,18 +151,18 @@
           <label for="pdfCourse">Curso</label>
           <select id="pdfCourse" name="pdfCourse" required></select>
 
-          <label for="pdfFolder">Pasta dos PDFs</label>
+          <label for="pdfFolder">Salvar em</label>
           <input id="pdfFolder" name="pdfFolder" type="text" placeholder="Capítulo 4 - Sintaxe">
 
           <label for="pdfScope">Esse PDF pertence a</label>
           <select id="pdfScope" name="pdfScope">
-            <option value="node">Unidade atual</option>
-            <option value="lesson">Aula específica</option>
+            <option value="node">Seção atual</option>
+            <option value="lesson">Aula selecionada</option>
             <option value="course">Curso inteiro</option>
           </select>
 
-          <label for="pdfLessonPath">Arquivo da aula</label>
-          <input id="pdfLessonPath" name="pdfLessonPath" type="text" placeholder="Curso/Módulo/Aula 01.mp4">
+          <input id="pdfLessonPath" name="pdfLessonPath" type="hidden">
+          <p id="pdf-lesson-label" class="target-label"></p>
 
           <label for="pdfFiles">PDFs da aula</label>
           <input id="pdfFiles" name="pdfFiles" type="file" accept="application/pdf,.pdf" multiple required>
@@ -176,13 +181,13 @@
 
           <label for="resourceScope">Esse link pertence a</label>
           <select id="resourceScope" name="resourceScope">
-            <option value="node">Unidade atual</option>
-            <option value="lesson">Aula específica</option>
+            <option value="node">Seção atual</option>
+            <option value="lesson">Aula selecionada</option>
             <option value="course">Curso inteiro</option>
           </select>
 
-          <label for="resourceLessonPath">Arquivo da aula</label>
-          <input id="resourceLessonPath" name="resourceLessonPath" type="text" placeholder="Curso/Módulo/Aula 01.mp4">
+          <input id="resourceLessonPath" name="resourceLessonPath" type="hidden">
+          <p id="resource-lesson-label" class="target-label"></p>
 
           <label for="resourceTitle">Título</label>
           <input id="resourceTitle" name="resourceTitle" type="text" placeholder="Exercícios complementares">
