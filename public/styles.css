@@ -553,6 +553,26 @@ a:focus-visible {
   font-size: 0.9rem;
 }
 
+.audio-resource {
+  align-items: start;
+}
+
+.audio-resource-body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.audio-resource audio {
+  width: min(560px, 100%);
+}
+
+.audio-resource a {
+  color: var(--accent-2);
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
 .library {
   margin-top: 32px;
 }
@@ -729,6 +749,11 @@ a:focus-visible {
 .file-icon.pdf {
   background: #fee4df;
   color: #b42318;
+}
+
+.file-icon.audio {
+  background: #dff5ea;
+  color: #087443;
 }
 
 .quick-row {

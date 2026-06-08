@@ -1,11 +1,13 @@
 const form = document.querySelector('#download-form');
 const pdfForm = document.querySelector('#pdf-form');
+const audioForm = document.querySelector('#audio-form');
 const courseForm = document.querySelector('#course-form');
 const nodeForm = document.querySelector('#node-form');
 const resourceForm = document.querySelector('#resource-form');
 const videoForm = document.querySelector('#video-form');
 const submitButton = document.querySelector('#submit-button');
 const pdfButton = document.querySelector('#pdf-button');
+const audioButton = document.querySelector('#audio-button');
 const courseButton = document.querySelector('#course-button');
 const nodeButton = document.querySelector('#node-button');
 const resourceButton = document.querySelector('#resource-button');
@@ -13,6 +15,7 @@ const videoButton = document.querySelector('#video-button');
 const refreshButton = document.querySelector('#refresh-button');
 const statusEl = document.querySelector('#status');
 const pdfStatusEl = document.querySelector('#pdf-status');
+const audioStatusEl = document.querySelector('#audio-status');
 const courseStatusEl = document.querySelector('#course-status');
 const nodeStatusEl = document.querySelector('#node-status');
 const resourceStatusEl = document.querySelector('#resource-status');
@@ -22,19 +25,24 @@ const breadcrumb = document.querySelector('#breadcrumb');
 const courseDescriptionEl = document.querySelector('#course-description');
 const courseSelect = document.querySelector('#course');
 const pdfCourseSelect = document.querySelector('#pdfCourse');
+const audioCourseSelect = document.querySelector('#audioCourse');
 const nodeCourseSelect = document.querySelector('#nodeCourse');
 const resourceCourseSelect = document.querySelector('#resourceCourse');
 const videoCourseSelect = document.querySelector('#videoCourse');
 const lessonFolderInput = document.querySelector('#lessonFolder');
 const pdfFolderInput = document.querySelector('#pdfFolder');
+const audioFolderInput = document.querySelector('#audioFolder');
 const nodeParentFolderInput = document.querySelector('#nodeParentFolder');
 const resourceFolderInput = document.querySelector('#resourceFolder');
 const videoFolderInput = document.querySelector('#videoFolder');
 const pdfLessonPathInput = document.querySelector('#pdfLessonPath');
+const audioLessonPathInput = document.querySelector('#audioLessonPath');
 const resourceLessonPathInput = document.querySelector('#resourceLessonPath');
 const pdfScopeSelect = document.querySelector('#pdfScope');
+const audioScopeSelect = document.querySelector('#audioScope');
 const resourceScopeSelect = document.querySelector('#resourceScope');
 const pdfLessonLabel = document.querySelector('#pdf-lesson-label');
+const audioLessonLabel = document.querySelector('#audio-lesson-label');
 const resourceLessonLabel = document.querySelector('#resource-lesson-label');
 const pageTitle = document.querySelector('#page-title');
 const libraryHeading = document.querySelector('#library-heading');
@@ -92,8 +100,16 @@ function isPdf(file) {
   return file.name.toLowerCase().endsWith('.pdf');
 }
 
+function isAudio(file) {
+  return /\.(mp3|m4a|aac|wav|ogg|flac)$/i.test(file.name);
+}
+
+function isAudioResource(resource) {
+  return /^audio\//.test(resource.mimeType || '') || /\.(mp3|m4a|aac|wav|ogg|flac)$/i.test(resource.path || '');
+}
+
 function selectedCourse() {
-  return courseSelect.value || pdfCourseSelect.value || nodeCourseSelect.value || resourceCourseSelect.value || videoCourseSelect.value || courses[0]?.name || '';
+  return courseSelect.value || pdfCourseSelect.value || audioCourseSelect.value || nodeCourseSelect.value || resourceCourseSelect.value || videoCourseSelect.value || courses[0]?.name || '';
 }
 
 function normalizeCourse(course) {
@@ -148,7 +164,7 @@ function setSelectValue(select, value) {
 }
 
 function renderCourseOptions(preferred = selectedCourse()) {
-  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
+  for (const select of [courseSelect, pdfCourseSelect, audioCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
     select.replaceChildren();
     if (!courses.length) {
       const option = document.createElement('option');
@@ -173,23 +189,25 @@ function renderCourseOptions(preferred = selectedCourse()) {
 function syncFormsWithDirectory() {
   const parts = currentDir.split('/').filter(Boolean);
   if (parts.length) {
-    for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
+    for (const select of [courseSelect, pdfCourseSelect, audioCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
       setSelectValue(select, parts[0]);
     }
     const folder = parts.slice(1).join('/');
     lessonFolderInput.value = folder;
     pdfFolderInput.value = folder;
+    audioFolderInput.value = folder;
     nodeParentFolderInput.value = folder;
     resourceFolderInput.value = folder;
     videoFolderInput.value = folder;
     return;
   }
   const course = selectedCourse();
-  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
+  for (const select of [courseSelect, pdfCourseSelect, audioCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) {
     setSelectValue(select, course);
   }
   lessonFolderInput.value = '';
   pdfFolderInput.value = '';
+  audioFolderInput.value = '';
   nodeParentFolderInput.value = '';
   resourceFolderInput.value = '';
   videoFolderInput.value = '';
@@ -198,8 +216,10 @@ function syncFormsWithDirectory() {
 function updateLessonTargets() {
   const label = selectedLesson ? cleanTitle(selectedLesson.name) : 'Nenhuma aula selecionada';
   pdfLessonPathInput.value = selectedLesson?.path || '';
+  audioLessonPathInput.value = selectedLesson?.path || '';
   resourceLessonPathInput.value = selectedLesson?.path || '';
   pdfLessonLabel.textContent = pdfScopeSelect.value === 'lesson' ? label : '';
+  audioLessonLabel.textContent = audioScopeSelect.value === 'lesson' ? label : '';
   resourceLessonLabel.textContent = resourceScopeSelect.value === 'lesson' ? label : '';
 }
 
@@ -258,6 +278,12 @@ function actionDefinitions() {
       detail: 'Material geral desta seção.'
     });
     actions.push({
+      id: 'audio-node',
+      formId: 'audio-form',
+      title: 'Áudio da seção',
+      detail: 'Faixas e gravações desta seção.'
+    });
+    actions.push({
       id: 'link-node',
       formId: 'resource-form',
       title: 'Link da seção',
@@ -266,6 +292,12 @@ function actionDefinitions() {
   }
 
   if (hasLesson) {
+    actions.unshift({
+      id: 'audio-lesson',
+      formId: 'audio-form',
+      title: 'Áudio da aula',
+      detail: cleanTitle(selectedLesson.name)
+    });
     actions.unshift({
       id: 'pdf-lesson',
       formId: 'pdf-form',
@@ -319,6 +351,13 @@ function configureAction(actionId) {
     pdfForm.classList.toggle('locked-scope', isLessonAction || isNodeAction);
   } else {
     pdfForm.classList.remove('locked-scope');
+  }
+
+  if (actionId.startsWith('audio-')) {
+    audioScopeSelect.value = isLessonAction ? 'lesson' : 'node';
+    audioForm.classList.toggle('locked-scope', isLessonAction || isNodeAction);
+  } else {
+    audioForm.classList.remove('locked-scope');
   }
 
   if (actionId.startsWith('link-')) {
@@ -442,7 +481,8 @@ function renderListingFiles(listing) {
 
   const videos = files.filter(isVideo);
   const pdfs = files.filter(isPdf);
-  const otherFiles = files.filter((file) => !isVideo(file) && !isPdf(file));
+  const audios = files.filter(isAudio);
+  const otherFiles = files.filter((file) => !isVideo(file) && !isPdf(file) && !isAudio(file));
 
   if (videos.length && !playerOpen) {
     fileList.append(createShelf('Aulas em video', videos.map(createVideoCard)));
@@ -450,6 +490,10 @@ function renderListingFiles(listing) {
 
   if (pdfs.length && !playerOpen) {
     fileList.append(createShelf('Materiais', pdfs.map(createFileCard)));
+  }
+
+  if (audios.length && !playerOpen) {
+    fileList.append(createShelf('Áudios', audios.map(createFileCard)));
   }
 
   if (otherFiles.length) {
@@ -540,8 +584,8 @@ function createFileCard(file) {
   link.rel = 'noreferrer';
 
   const icon = document.createElement('span');
-  icon.className = isPdf(file) ? 'file-icon pdf' : 'file-icon';
-  icon.textContent = isPdf(file) ? 'PDF' : 'FILE';
+  icon.className = isPdf(file) ? 'file-icon pdf' : isAudio(file) ? 'file-icon audio' : 'file-icon';
+  icon.textContent = isPdf(file) ? 'PDF' : isAudio(file) ? 'AUDIO' : 'FILE';
 
   const title = document.createElement('strong');
   title.textContent = cleanTitle(file.name);
@@ -571,6 +615,7 @@ function renderPlayer(file) {
   playerOpen = true;
   librarySectionHeading.hidden = true;
   pdfScopeSelect.value = 'lesson';
+  audioScopeSelect.value = 'lesson';
   resourceScopeSelect.value = 'lesson';
   updateLessonTargets();
   renderActionList();
@@ -633,6 +678,14 @@ function renderPlayer(file) {
     showPlayerManagedForm(inlinePanel, 'pdf-lesson');
   });
 
+  const attachAudio = document.createElement('button');
+  attachAudio.type = 'button';
+  attachAudio.className = 'secondary-action';
+  attachAudio.textContent = 'Anexar áudio';
+  attachAudio.addEventListener('click', () => {
+    showPlayerManagedForm(inlinePanel, 'audio-lesson');
+  });
+
   const attachLink = document.createElement('button');
   attachLink.type = 'button';
   attachLink.className = 'secondary-action';
@@ -649,7 +702,7 @@ function renderPlayer(file) {
     showPlayerManagedForm(inlinePanel, 'video');
   });
 
-  actions.append(attachPdf, attachLink, edit, uploadFile, open);
+  actions.append(attachPdf, attachAudio, attachLink, edit, uploadFile, open);
   details.append(label, title, meta, description, renderLinks(file), actions, inlinePanel);
 
   lessonMain.append(video, details);
@@ -818,9 +871,39 @@ function createResourceDisclosure(title, resources) {
 }
 
 function createResourceLink(resource) {
+  const href = resource.type === 'file' ? fileHref(resource.path) : resource.url;
+
+  if (resource.type === 'file' && isAudioResource(resource)) {
+    const item = document.createElement('div');
+    item.className = 'resource-link audio-resource';
+
+    const badge = document.createElement('span');
+    badge.textContent = 'AUDIO';
+
+    const body = document.createElement('div');
+    body.className = 'audio-resource-body';
+
+    const title = document.createElement('strong');
+    title.textContent = resource.title || cleanTitle(resource.path || '');
+
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.preload = 'metadata';
+    audio.src = href;
+
+    const download = document.createElement('a');
+    download.href = href;
+    download.download = resource.path?.split('/').at(-1) || '';
+    download.textContent = 'Baixar';
+
+    body.append(title, audio, download);
+    item.append(badge, body);
+    return item;
+  }
+
   const link = document.createElement('a');
   link.className = 'resource-link';
-  link.href = resource.type === 'file' ? fileHref(resource.path) : resource.url;
+  link.href = href;
   link.target = '_blank';
   link.rel = 'noreferrer';
 
@@ -1084,6 +1167,32 @@ pdfForm.addEventListener('submit', async (event) => {
   }
 });
 
+audioForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (audioScopeSelect.value === 'lesson' && !audioLessonPathInput.value) {
+    setStatus(audioStatusEl, 'Selecione uma aula antes de anexar audio para aula.', true);
+    return;
+  }
+  audioButton.disabled = true;
+  setStatus(audioStatusEl, 'Adicionando...');
+  try {
+    const response = await fetch('/api/upload-audios', {
+      method: 'POST',
+      body: new FormData(audioForm)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Falha ao adicionar audios.');
+    renderListing(data.listing || { current: currentDir, directories: [], files: [] });
+    setStatus(audioStatusEl, data.message || 'Audios adicionados.');
+    audioForm.reset();
+    syncFormsWithDirectory();
+  } catch (error) {
+    setStatus(audioStatusEl, error.message, true);
+  } finally {
+    audioButton.disabled = false;
+  }
+});
+
 resourceForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (resourceScopeSelect.value === 'lesson' && !resourceLessonPathInput.value) {
@@ -1120,31 +1229,37 @@ manageTab.addEventListener('click', openManagePanel);
 libraryTab.addEventListener('click', closeManagePanel);
 
 courseSelect.addEventListener('change', () => {
-  for (const select of [pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = courseSelect.value;
+  for (const select of [pdfCourseSelect, audioCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = courseSelect.value;
   updateCourseDescription();
 });
 
 pdfCourseSelect.addEventListener('change', () => {
-  for (const select of [courseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = pdfCourseSelect.value;
+  for (const select of [courseSelect, audioCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = pdfCourseSelect.value;
+  updateCourseDescription();
+});
+
+audioCourseSelect.addEventListener('change', () => {
+  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = audioCourseSelect.value;
   updateCourseDescription();
 });
 
 nodeCourseSelect.addEventListener('change', () => {
-  for (const select of [courseSelect, pdfCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = nodeCourseSelect.value;
+  for (const select of [courseSelect, pdfCourseSelect, audioCourseSelect, resourceCourseSelect, videoCourseSelect]) select.value = nodeCourseSelect.value;
   updateCourseDescription();
 });
 
 resourceCourseSelect.addEventListener('change', () => {
-  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, videoCourseSelect]) select.value = resourceCourseSelect.value;
+  for (const select of [courseSelect, pdfCourseSelect, audioCourseSelect, nodeCourseSelect, videoCourseSelect]) select.value = resourceCourseSelect.value;
   updateCourseDescription();
 });
 
 videoCourseSelect.addEventListener('change', () => {
-  for (const select of [courseSelect, pdfCourseSelect, nodeCourseSelect, resourceCourseSelect]) select.value = videoCourseSelect.value;
+  for (const select of [courseSelect, pdfCourseSelect, audioCourseSelect, nodeCourseSelect, resourceCourseSelect]) select.value = videoCourseSelect.value;
   updateCourseDescription();
 });
 
 pdfScopeSelect.addEventListener('change', updateLessonTargets);
+audioScopeSelect.addEventListener('change', updateLessonTargets);
 resourceScopeSelect.addEventListener('change', updateLessonTargets);
 
 Promise.all([loadCourses(), loadDirectory()]).catch((error) => setStatus(statusEl, error.message, true));

@@ -160,6 +160,31 @@
           <p id="pdf-status" class="status" role="status" aria-live="polite"></p>
         </form>
 
+        <form id="audio-form" class="form managed-form" enctype="multipart/form-data" hidden>
+          <h3>Anexar áudios</h3>
+          <label for="audioCourse" class="context-field">Curso</label>
+          <select id="audioCourse" name="audioCourse" required></select>
+
+          <label for="audioFolder" class="context-field">Salvar em</label>
+          <input id="audioFolder" name="audioFolder" type="text" placeholder="Capítulo 4 - Sintaxe">
+
+          <label for="audioScope" class="scope-field">Esse áudio pertence a</label>
+          <select id="audioScope" name="audioScope">
+            <option value="node">Seção atual</option>
+            <option value="lesson">Aula selecionada</option>
+            <option value="course">Curso inteiro</option>
+          </select>
+
+          <input id="audioLessonPath" name="audioLessonPath" type="hidden">
+          <p id="audio-lesson-label" class="target-label"></p>
+
+          <label for="audioFiles">Áudios da aula</label>
+          <input id="audioFiles" name="audioFiles" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" multiple required>
+
+          <button id="audio-button" type="submit">Adicionar áudios</button>
+          <p id="audio-status" class="status" role="status" aria-live="polite"></p>
+        </form>
+
         <form id="resource-form" class="form managed-form" autocomplete="off" hidden>
           <h3>Adicionar link</h3>
           <label for="resourceCourse" class="context-field">Curso</label>

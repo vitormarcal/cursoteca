@@ -19,8 +19,16 @@ const mimeTypes = new Map([
   ['.js', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
   ['.pdf', 'application/pdf'],
-  ['.mp4', 'video/mp4']
+  ['.mp4', 'video/mp4'],
+  ['.mp3', 'audio/mpeg'],
+  ['.m4a', 'audio/mp4'],
+  ['.aac', 'audio/aac'],
+  ['.wav', 'audio/wav'],
+  ['.ogg', 'audio/ogg'],
+  ['.flac', 'audio/flac']
 ]);
+
+const audioExtensions = new Set(['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.flac']);
 
 function send(res, status, body, headers = {}) {
   res.writeHead(status, headers);
@@ -375,7 +383,9 @@ async function listDirectory(relativeDir = '') {
       });
     } else if (entry.isFile() && entry.name !== 'baixar_aula.sh' && entry.name !== path.basename(databasePath)) {
       const isMp4 = entry.name.toLowerCase().endsWith('.mp4');
-      const isPdfFile = entry.name.toLowerCase().endsWith('.pdf');
+      const ext = path.extname(entry.name).toLowerCase();
+      const isPdfFile = ext === '.pdf';
+      const isAudioFile = audioExtensions.has(ext);
       const metadata = mediaMetadata.files[relative] || null;
       let lesson = null;
       let resourceGroups = null;
@@ -384,7 +394,7 @@ async function listDirectory(relativeDir = '') {
         lesson = await findLessonForFile(relative);
         if (!lesson) continue;
         resourceGroups = lesson ? await resourcesForLesson(relative) : null;
-      } else if (isPdfFile) {
+      } else if (isPdfFile || isAudioFile) {
         resource = await findResourceForFile(relative);
         if (!resource) continue;
       } else {
@@ -803,6 +813,65 @@ async function handlePdfUpload(req, res) {
   }
 }
 
+async function handleAudioUpload(req, res) {
+  try {
+    const contentType = req.headers['content-type'] || '';
+    const boundary = /boundary=(?:"([^"]+)"|([^;]+))/.exec(contentType)?.[1] ||
+      /boundary=(?:"([^"]+)"|([^;]+))/.exec(contentType)?.[2];
+
+    if (!boundary) {
+      return sendJson(res, 400, { error: 'Envio invalido.' });
+    }
+
+    const body = await readRawBody(req, 1024 * 1024 * 1024 * 2);
+    const parts = parseMultipart(body, boundary);
+    const audioFolder = cleanRelativePath(
+      parts.find((part) => part.name === 'audioFolder')?.content.toString('utf8') || ''
+    );
+    const audioCourse = parts.find((part) => part.name === 'audioCourse')?.content.toString('utf8') || '';
+    const audioScopeRaw = parts.find((part) => part.name === 'audioScope')?.content.toString('utf8') || 'node';
+    const audioLessonPath = cleanRelativePath(
+      parts.find((part) => part.name === 'audioLessonPath')?.content.toString('utf8') || ''
+    );
+    const audioScope = audioScopeRaw === 'lesson' || audioScopeRaw === 'course' ? audioScopeRaw : 'node';
+    const folder = buildCoursePath(audioCourse, audioFolder);
+    const audios = parts.filter((part) => part.name === 'audioFiles' && part.filename && part.content.length);
+
+    if (!audios.length) {
+      return sendJson(res, 400, { error: 'Selecione ao menos um audio.' });
+    }
+
+    await fs.mkdir(filesDir, { recursive: true });
+    const folderPath = safeJoin(filesDir, folder);
+    await fs.mkdir(folderPath, { recursive: true });
+
+    const saved = [];
+    for (const audio of audios) {
+      const cleanName = cleanPathPart(path.basename(audio.filename));
+      if (!audioExtensions.has(path.extname(cleanName).toLowerCase())) {
+        return sendJson(res, 400, { error: 'Envie apenas arquivos de audio.' });
+      }
+
+      const destination = await uniqueFilePath(folderPath, cleanName);
+      await fs.writeFile(destination, audio.content);
+      const relativePath = cleanRelativePath(path.relative(filesDir, destination));
+      await ensureFileResource(relativePath, audioScope, audioLessonPath);
+      saved.push(path.basename(destination));
+    }
+
+    sendJson(res, 200, {
+      ok: true,
+      message: saved.length === 1 ? 'Audio adicionado.' : 'Audios adicionados.',
+      saved,
+      listing: await listDirectory(folder)
+    });
+  } catch (error) {
+    sendJson(res, 500, {
+      error: error.message || 'Falha ao adicionar audio.'
+    });
+  }
+}
+
 async function handleVideoUpload(req, res) {
   try {
     const contentType = req.headers['content-type'] || '';
@@ -1107,7 +1176,30 @@ async function serveStatic(req, res) {
       return send(res, 404, 'Arquivo nao encontrado.');
     }
     const ext = path.extname(file).toLowerCase();
-    res.writeHead(200, { 'content-type': mimeTypes.get(ext) || 'application/octet-stream' });
+    const contentType = mimeTypes.get(ext) || 'application/octet-stream';
+    const range = req.headers.range;
+    if (range && /^(audio|video)\//.test(contentType)) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+      if (match) {
+        const start = match[1] ? Number(match[1]) : 0;
+        const end = match[2] ? Number(match[2]) : stat.size - 1;
+        if (start <= end && end < stat.size) {
+          res.writeHead(206, {
+            'content-type': contentType,
+            'accept-ranges': 'bytes',
+            'content-range': `bytes ${start}-${end}/${stat.size}`,
+            'content-length': end - start + 1
+          });
+          createReadStream(file, { start, end }).pipe(res);
+          return;
+        }
+      }
+    }
+    res.writeHead(200, {
+      'content-type': contentType,
+      'accept-ranges': /^(audio|video)\//.test(contentType) ? 'bytes' : 'none',
+      'content-length': stat.size
+    });
     createReadStream(file).pipe(res);
     return;
   }
@@ -1136,6 +1228,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && req.url === '/api/upload-pdfs') {
       await handlePdfUpload(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/upload-audios') {
+      await handleAudioUpload(req, res);
       return;
     }
 
