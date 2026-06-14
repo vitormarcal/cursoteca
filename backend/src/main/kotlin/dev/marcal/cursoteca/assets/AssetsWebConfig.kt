@@ -7,12 +7,12 @@ import java.nio.file.Path
 
 @Configuration
 class AssetsWebConfig(
-	private val properties: AssetsProperties,
+    private val properties: AssetsProperties,
 ) : WebMvcConfigurer {
-	override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
-		val root = Path.of(properties.assetsDir).toAbsolutePath().normalize()
-		registry
-			.addResourceHandler("/assets/**")
-			.addResourceLocations(root.toUri().toString())
-	}
+    override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
+        val root = Path.of(properties.assetsDir).toAbsolutePath().normalize()
+        registry
+            .addResourceHandler("/assets/**")
+            .addResourceLocations(root.toUri().toString())
+    }
 }

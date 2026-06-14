@@ -5,9 +5,9 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface CourseRepository : JpaRepository<Course, Long> {
-	fun existsBySlug(slug: String): Boolean
+    fun existsBySlug(slug: String): Boolean
 
-	fun findAllByOrderByCreatedAtDescIdDesc(): List<Course>
+    fun findAllByOrderByCreatedAtDescIdDesc(): List<Course>
 
-	fun findBySlug(slug: String): Course?
+    fun findBySlug(slug: String): Course?
 }

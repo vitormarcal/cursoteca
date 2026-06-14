@@ -12,15 +12,17 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/courses/{courseId}/sections")
 class CourseSectionController(
-	private val service: CourseSectionService,
+    private val service: CourseSectionService,
 ) {
-	@GetMapping
-	fun list(@PathVariable courseId: Long): List<CourseSectionResponse> = service.listTree(courseId)
+    @GetMapping
+    fun list(
+        @PathVariable courseId: Long,
+    ): List<CourseSectionResponse> = service.listTree(courseId)
 
-	@PostMapping
-	@ResponseStatus(HttpStatus.CREATED)
-	fun create(
-		@PathVariable courseId: Long,
-		@RequestBody request: CreateCourseSectionRequest,
-	): CourseSectionResponse = service.createSection(courseId, CreateCourseSectionCommand.from(request)).toResponse()
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun create(
+        @PathVariable courseId: Long,
+        @RequestBody request: CreateCourseSectionRequest,
+    ): CourseSectionResponse = service.createSection(courseId, CreateCourseSectionCommand.from(request)).toResponse()
 }

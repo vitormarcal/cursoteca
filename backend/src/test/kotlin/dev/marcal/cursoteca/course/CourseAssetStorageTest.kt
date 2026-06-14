@@ -11,16 +11,18 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CourseAssetStorageTest {
-	@Test
-	fun `creates course directory and stores cover image in course layout`(@TempDir assetsDir: Path) {
-		val storage = CourseAssetStorage(AssetStorage(AssetsProperties(assetsDir.toString())))
-		val image = MockMultipartFile("image", "cover.png", "image/png", byteArrayOf(1, 2, 3))
+    @Test
+    fun `creates course directory and stores cover image in course layout`(
+        @TempDir assetsDir: Path,
+    ) {
+        val storage = CourseAssetStorage(AssetStorage(AssetsProperties(assetsDir.toString())))
+        val image = MockMultipartFile("image", "cover.png", "image/png", byteArrayOf(1, 2, 3))
 
-		val courseDirectory = storage.createCourseDirectory("curso-kotlin")
-		val storedImage = storage.saveCoverImage("curso-kotlin", image)
+        val courseDirectory = storage.createCourseDirectory("curso-kotlin")
+        val storedImage = storage.saveCoverImage("curso-kotlin", image)
 
-		assertEquals("courses/curso-kotlin", courseDirectory)
-		assertEquals("courses/curso-kotlin/image.png", storedImage.relativePath)
-		assertTrue(Files.exists(assetsDir.resolve("courses/curso-kotlin/image.png")))
-	}
+        assertEquals("courses/curso-kotlin", courseDirectory)
+        assertEquals("courses/curso-kotlin/image.png", storedImage.relativePath)
+        assertTrue(Files.exists(assetsDir.resolve("courses/curso-kotlin/image.png")))
+    }
 }

@@ -9,15 +9,17 @@ import java.nio.file.Path
 
 @Component
 class CourseAssetStorage(
-	private val assetStorage: AssetStorage,
+    private val assetStorage: AssetStorage,
 ) {
-	fun createCourseDirectory(slug: String): String =
-		assetStorage.createDirectory(courseDirectory(slug))
+    fun createCourseDirectory(slug: String): String = assetStorage.createDirectory(courseDirectory(slug))
 
-	fun saveCoverImage(slug: String, image: MultipartFile): StoredAsset {
-		val imageFileName = "image.${image.safeImageExtension()}"
-		return assetStorage.save(courseDirectory(slug).resolve(imageFileName), image)
-	}
+    fun saveCoverImage(
+        slug: String,
+        image: MultipartFile,
+    ): StoredAsset {
+        val imageFileName = "image.${image.safeImageExtension()}"
+        return assetStorage.save(courseDirectory(slug).resolve(imageFileName), image)
+    }
 
-	private fun courseDirectory(slug: String): Path = Path.of("courses", slug)
+    private fun courseDirectory(slug: String): Path = Path.of("courses", slug)
 }

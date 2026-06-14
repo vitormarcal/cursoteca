@@ -15,19 +15,21 @@ import org.springframework.web.multipart.MultipartFile
 @RestController
 @RequestMapping("/api/courses")
 class CourseController(
-	private val service: CourseService,
+    private val service: CourseService,
 ) {
-	@GetMapping
-	fun list(): List<CourseResponse> = service.listCourses().map { it.toResponse() }
+    @GetMapping
+    fun list(): List<CourseResponse> = service.listCourses().map { it.toResponse() }
 
-	@GetMapping("/{slug}")
-	fun getBySlug(@PathVariable slug: String): CourseResponse = service.getBySlug(slug).toResponse()
+    @GetMapping("/{slug}")
+    fun getBySlug(
+        @PathVariable slug: String,
+    ): CourseResponse = service.getBySlug(slug).toResponse()
 
-	@PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-	@ResponseStatus(HttpStatus.CREATED)
-	fun create(
-		@RequestParam("name") name: String,
-		@RequestParam("description") description: String,
-		@RequestPart("image") image: MultipartFile,
-	): CourseResponse = service.createCourse(CreateCourseCommand.from(name, description, image)).toResponse()
+    @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @ResponseStatus(HttpStatus.CREATED)
+    fun create(
+        @RequestParam("name") name: String,
+        @RequestParam("description") description: String,
+        @RequestPart("image") image: MultipartFile,
+    ): CourseResponse = service.createCourse(CreateCourseCommand.from(name, description, image)).toResponse()
 }
