@@ -1,8 +1,9 @@
 package dev.marcal.cursoteca.assets
 
+import dev.marcal.cursoteca.error.BusinessException
+import dev.marcal.cursoteca.error.ReasonEnum
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.web.server.ResponseStatusException
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
@@ -27,8 +28,9 @@ class AssetStorageTest {
 		val storage = AssetStorage(AssetsProperties(assetsDir.toString()))
 		val file = MockMultipartFile("file", "cover.png", "image/png", byteArrayOf(1))
 
-		assertFailsWith<ResponseStatusException> {
+		val error = assertFailsWith<BusinessException> {
 			storage.save(Path.of("../outside.png"), file)
 		}
+		assertEquals(ReasonEnum.INVALID_ASSET_PATH, error.reason)
 	}
 }

@@ -10,6 +10,8 @@ class CourseService(
 ) {
 	fun listCourses(): List<Course> = repository.findAllByOrderByCreatedAtDescIdDesc()
 
+	fun getBySlug(slug: String): Course = repository.findBySlug(slug) ?: throw CourseNotFoundException(slug)
+
 	@Transactional
 	fun createCourse(command: CreateCourseCommand): Course {
 		val slug = uniqueSlug(command.name)

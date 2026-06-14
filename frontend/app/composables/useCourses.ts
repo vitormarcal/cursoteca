@@ -9,6 +9,7 @@ export type CreateCourseInput = {
 
 export type CoursesApi = {
   createCourse: (input: CreateCourseInput) => Promise<unknown>
+  getCourseBySlug: (slug: string) => ReturnType<typeof useFetch<Course>>
   listCourses: () => ReturnType<typeof useFetch<Course[]>>
 }
 
@@ -20,7 +21,14 @@ export function useCourses(): CoursesApi {
 
   function listCourses() {
     return useFetch<Course[]>('/api/courses', {
+      baseURL: backendBaseUrl(),
       default: () => []
+    })
+  }
+
+  function getCourseBySlug(slug: string) {
+    return useFetch<Course>(`/api/courses/${slug}`, {
+      baseURL: backendBaseUrl()
     })
   }
 
@@ -31,6 +39,7 @@ export function useCourses(): CoursesApi {
     formData.append('image', input.image)
 
     return $fetch('/api/courses', {
+      baseURL: backendBaseUrl(),
       method: 'POST',
       body: formData
     })
@@ -38,6 +47,7 @@ export function useCourses(): CoursesApi {
 
   return {
     createCourse,
+    getCourseBySlug,
     listCourses
   }
 }

@@ -1,8 +1,6 @@
 package dev.marcal.cursoteca.course
 
-import org.springframework.http.HttpStatus
 import org.springframework.web.multipart.MultipartFile
-import org.springframework.web.server.ResponseStatusException
 
 class CreateCourseCommand private constructor(
 	val name: String,
@@ -15,10 +13,10 @@ class CreateCourseCommand private constructor(
 			val cleanDescription = requiredText(description, "description")
 
 			if (image.isEmpty) {
-				throw badRequest("image is required")
+				throw invalid("image", "image is required")
 			}
 			if (!image.contentType.orEmpty().startsWith("image/")) {
-				throw badRequest("image must be an image file")
+				throw invalid("image", "image must be an image file")
 			}
 
 			return CreateCourseCommand(
@@ -31,11 +29,13 @@ class CreateCourseCommand private constructor(
 		private fun requiredText(value: String, field: String): String {
 			val clean = value.trim()
 			if (clean.isBlank()) {
-				throw badRequest("$field is required")
+				throw invalid(field, "$field is required")
 			}
 			return clean
 		}
 
-		private fun badRequest(message: String) = ResponseStatusException(HttpStatus.BAD_REQUEST, message)
+		private fun invalid(field: String, message: String) = InvalidCourseInputException(
+			mapOf(field to message),
+		)
 	}
 }

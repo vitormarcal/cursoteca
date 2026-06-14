@@ -137,6 +137,7 @@ h2 {
 }
 
 .course-card {
+  display: block;
   overflow: hidden;
   border: 1px solid #dce3e7;
   border-radius: 8px;
@@ -177,6 +178,7 @@ h2 {
 }
 
 .course-form input,
+.course-form select,
 .course-form textarea {
   width: 100%;
   border: 1px solid #bdc8ce;
@@ -204,6 +206,62 @@ h2 {
   gap: 12px;
 }
 
+.course-detail {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 32px;
+}
+
+.course-detail img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #dce3e7;
+}
+
+.course-detail p {
+  margin: 0;
+  color: #62707a;
+  line-height: 1.6;
+}
+
+.section-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 24px;
+  align-items: start;
+}
+
+.section-list {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.section-list .section-list {
+  margin-top: 12px;
+  padding-left: 18px;
+}
+
+.section-item {
+  border: 1px solid #dce3e7;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.section-item p {
+  margin: 0;
+  color: #62707a;
+  line-height: 1.5;
+}
+
 @media (max-width: 640px) {
   .topbar,
   .page-header,
@@ -214,5 +272,10 @@ h2 {
 
   .topbar nav {
     justify-content: space-between;
+  }
+
+  .course-detail,
+  .section-layout {
+    grid-template-columns: 1fr;
   }
 }

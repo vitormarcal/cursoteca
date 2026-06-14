@@ -1,30 +1,15 @@
 package dev.marcal.cursoteca.course
 
+import dev.marcal.cursoteca.BaseIntegrationTest
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.test.assertTrue
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-class CourseIntegrationTest {
-	@Autowired
-	lateinit var mockMvc: MockMvc
-
+class CourseIntegrationTest : BaseIntegrationTest() {
 	@Test
 	fun `creates course with image and lists it`() {
 		val image = MockMultipartFile(
@@ -76,28 +61,23 @@ class CourseIntegrationTest {
 
 	@Test
 	fun `requires all course fields`() {
+		val image = MockMultipartFile(
+			"image",
+			"cover.png",
+			"image/png",
+			byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47),
+		)
+
 		mockMvc.multipart("/api/courses") {
+			file(image)
 			param("name", "")
 			param("description", "Descrição")
 		}
 			.andExpect {
 				status { isBadRequest() }
+				jsonPath("$.code") { value(1001) }
+				jsonPath("$.description") { value("Course input is invalid.") }
+				jsonPath("$.details.name") { value("name is required") }
 			}
-	}
-
-	companion object {
-		@Container
-		val postgres = PostgreSQLContainer("postgres:17-alpine")
-
-		val assetsDir: Path = Files.createTempDirectory("cursoteca-assets-test")
-
-		@JvmStatic
-		@DynamicPropertySource
-		fun databaseProperties(registry: DynamicPropertyRegistry) {
-			registry.add("spring.datasource.url", postgres::getJdbcUrl)
-			registry.add("spring.datasource.username", postgres::getUsername)
-			registry.add("spring.datasource.password", postgres::getPassword)
-			registry.add("cursoteca.assets-dir") { assetsDir.toString() }
-		}
 	}
 }

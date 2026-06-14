@@ -12,8 +12,8 @@ async function submitCourse(input: CreateCourseInput) {
   try {
     await createCourse(input)
     await navigateTo('/')
-  } catch {
-    errorMessage.value = 'Não foi possível cadastrar o curso.'
+  } catch (error) {
+    errorMessage.value = apiErrorMessage(error, 'Não foi possível cadastrar o curso.')
   } finally {
     submitting.value = false
   }

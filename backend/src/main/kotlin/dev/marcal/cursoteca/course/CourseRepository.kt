@@ -8,4 +8,6 @@ interface CourseRepository : JpaRepository<Course, Long> {
 	fun existsBySlug(slug: String): Boolean
 
 	fun findAllByOrderByCreatedAtDescIdDesc(): List<Course>
+
+	fun findBySlug(slug: String): Course?
 }

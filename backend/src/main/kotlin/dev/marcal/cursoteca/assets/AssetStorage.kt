@@ -1,9 +1,9 @@
 package dev.marcal.cursoteca.assets
 
-import org.springframework.http.HttpStatus
+import dev.marcal.cursoteca.error.BusinessException
+import dev.marcal.cursoteca.error.ReasonEnum
 import org.springframework.stereotype.Component
 import org.springframework.web.multipart.MultipartFile
-import org.springframework.web.server.ResponseStatusException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -46,5 +46,5 @@ class AssetStorage(
 		return resolved
 	}
 
-	private fun invalidAssetPath() = ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid asset path")
+	private fun invalidAssetPath() = BusinessException(ReasonEnum.INVALID_ASSET_PATH)
 }
