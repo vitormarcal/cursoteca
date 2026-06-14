@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Course } from '~/types/course'
 import type { CreateCourseSectionInput } from '~/types/course-section'
 
 const route = useRoute()
