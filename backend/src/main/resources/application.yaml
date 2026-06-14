@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: cursoteca
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/cursoteca}
+    username: ${DATABASE_USERNAME:cursoteca}
+    password: ${DATABASE_PASSWORD:cursoteca}
+  servlet:
+    multipart:
+      max-file-size: ${CURSOTECA_MAX_UPLOAD_SIZE:20MB}
+      max-request-size: ${CURSOTECA_MAX_UPLOAD_SIZE:20MB}
+  jpa:
+    open-in-view: false
+
+cursoteca:
+  assets-dir: ${CURSOTECA_ASSETS_DIR:assets}

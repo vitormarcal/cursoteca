@@ -1,0 +1,54 @@
+name: cursoteca
+
+services:
+  backend:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/cursoteca
+      DATABASE_USERNAME: cursoteca
+      DATABASE_PASSWORD: cursoteca
+      CURSOTECA_ASSETS_DIR: /app/assets
+    volumes:
+      - backend-assets:/app/assets
+      - gradle-cache:/home/gradle/.gradle
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NUXT_BACKEND_URL: http://backend:8080
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:17-alpine
+    container_name: cursoteca_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cursoteca
+      POSTGRES_USER: cursoteca
+      POSTGRES_PASSWORD: cursoteca
+    ports:
+      - "${CURSOTECA_DB_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cursoteca -d cursoteca"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  backend-assets:
+  gradle-cache:
+  postgres-data:

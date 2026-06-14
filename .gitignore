@@ -2,5 +2,7 @@ arquivos/
 .agents/
 .codex/
 node_modules/
+frontend/.nuxt/
+frontend/.output/
 .DS_Store
 .idea/
