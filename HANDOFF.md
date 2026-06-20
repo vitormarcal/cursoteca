@@ -11,17 +11,21 @@ Fluxos já disponíveis na aplicação real:
 - cadastro de aulas com upload manual de vídeo MP4;
 - vínculo opcional da aula com uma seção do mesmo curso;
 - listagem das aulas dentro das seções ou diretamente no curso;
-- reprodução dos vídeos pelo player HTML5;
+- página dedicada da aula com contexto da hierarquia de seções;
+- reprodução dos vídeos pelo player HTML5 sem carregar players na árvore do curso;
 - armazenamento dos vídeos em `courses/<slug>/lessons/<uuid>.mp4` dentro do diretório configurado de assets.
 
 Endpoints de aulas da aplicação real:
 
 ```text
 GET  /api/courses/{courseId}/lessons
+GET  /api/courses/{courseId}/lessons/{lessonId}
 POST /api/courses/{courseId}/lessons
 ```
 
 O `POST` usa `multipart/form-data` com `sectionId` opcional, `title`, `description` e `video`. Somente arquivos `.mp4` com `Content-Type: video/mp4` são aceitos.
+
+O endpoint de detalhe valida que a aula pertence ao curso e retorna `sectionPath`, ordenado da seção raiz até a seção diretamente vinculada à aula. No frontend, a rota correspondente é `/courses/{slug}/lessons/{lessonId}`.
 
 Próximos incrementos planejados para a aplicação real: materiais de aula/seção/curso (PDF, link e áudio) e download de vídeos com `yt-dlp`.
 

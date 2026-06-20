@@ -30,6 +30,8 @@ describe('courses index page', () => {
 
     expect(useFetchMock.mock.calls[0][0]).toBe('/api/courses')
     expect(useFetchMock.mock.calls[0][1]).toEqual({
+      key: 'courses-list',
+      baseURL: undefined,
       default: expect.any(Function)
     })
     expect(wrapper.text()).toContain('Sample Language Course')

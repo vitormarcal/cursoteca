@@ -6,6 +6,7 @@ describe('CourseSectionList', () => {
   it('renders nested sections', async () => {
     const wrapper = await mountSuspended(CourseSectionList, {
       props: {
+        courseSlug: 'sample-course',
         sections: [
           {
             id: 10,

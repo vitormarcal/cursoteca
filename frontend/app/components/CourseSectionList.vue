@@ -9,6 +9,7 @@ defineOptions({
 withDefaults(defineProps<{
   sections: CourseSection[]
   lessons?: Lesson[]
+  courseSlug: string
 }>(), {
   lessons: () => []
 })
@@ -22,9 +23,17 @@ withDefaults(defineProps<{
         <p v-if="section.description">{{ section.description }}</p>
       </div>
 
-      <LessonList :lessons="lessons.filter(lesson => lesson.sectionId === section.id)" />
+      <LessonList
+        :lessons="lessons.filter(lesson => lesson.sectionId === section.id)"
+        :course-slug="courseSlug"
+      />
 
-      <CourseSectionList v-if="section.children.length" :sections="section.children" :lessons="lessons" />
+      <CourseSectionList
+        v-if="section.children.length"
+        :sections="section.children"
+        :lessons="lessons"
+        :course-slug="courseSlug"
+      />
     </li>
   </ol>
 </template>

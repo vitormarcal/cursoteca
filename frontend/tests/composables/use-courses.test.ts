@@ -18,6 +18,7 @@ describe('useCourses', () => {
 
     expect(useFetchMock.mock.calls[0][0]).toBe('/api/courses')
     expect(useFetchMock.mock.calls[0][1]).toEqual({
+      key: 'courses-list',
       baseURL: undefined,
       default: expect.any(Function)
     })
@@ -29,6 +30,7 @@ describe('useCourses', () => {
 
     expect(useFetchMock.mock.calls[0][0]).toBe('/api/courses/sample-language-course')
     expect(useFetchMock.mock.calls[0][1]).toEqual({
+      key: 'course-sample-language-course',
       baseURL: undefined
     })
   })

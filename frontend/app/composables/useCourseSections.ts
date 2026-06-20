@@ -17,6 +17,7 @@ export function useCourseSections(): CourseSectionsApi {
 
   function listSections(courseId: number) {
     return useFetch<CourseSection[]>(`/api/courses/${courseId}/sections`, {
+      key: `course-${courseId}-sections`,
       baseURL: backendBaseUrl(),
       default: () => []
     })

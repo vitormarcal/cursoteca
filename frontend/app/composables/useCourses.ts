@@ -21,6 +21,7 @@ export function useCourses(): CoursesApi {
 
   function listCourses() {
     return useFetch<Course[]>('/api/courses', {
+      key: 'courses-list',
       baseURL: backendBaseUrl(),
       default: () => []
     })
@@ -28,6 +29,7 @@ export function useCourses(): CoursesApi {
 
   function getCourseBySlug(slug: string) {
     return useFetch<Course>(`/api/courses/${slug}`, {
+      key: `course-${slug}`,
       baseURL: backendBaseUrl()
     })
   }

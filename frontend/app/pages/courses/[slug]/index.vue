@@ -111,9 +111,14 @@ async function submitLesson(input: CreateLessonInput) {
           <template v-else>
             <section v-if="courseLessons.length" class="unsectioned-lessons">
               <h2>Aulas do curso</h2>
-              <LessonList :lessons="courseLessons" />
+              <LessonList :lessons="courseLessons" :course-slug="course.slug" />
             </section>
-            <CourseSectionList v-if="sections.length" :sections="sections" :lessons="lessons" />
+            <CourseSectionList
+              v-if="sections.length"
+              :sections="sections"
+              :lessons="lessons"
+              :course-slug="course.slug"
+            />
           </template>
         </div>
 

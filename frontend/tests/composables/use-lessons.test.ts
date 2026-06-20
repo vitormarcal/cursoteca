@@ -17,8 +17,19 @@ describe('useLessons', () => {
 
     expect(useFetchMock.mock.calls[0][0]).toBe('/api/courses/42/lessons')
     expect(useFetchMock.mock.calls[0][1]).toEqual({
+      key: 'course-42-lessons',
       baseURL: undefined,
       default: expect.any(Function)
+    })
+  })
+
+  it('loads a lesson detail scoped to its course', () => {
+    useLessons().getLesson(42, 7)
+
+    expect(useFetchMock.mock.calls[0][0]).toBe('/api/courses/42/lessons/7')
+    expect(useFetchMock.mock.calls[0][1]).toEqual({
+      key: 'course-42-lesson-7',
+      baseURL: undefined
     })
   })
 

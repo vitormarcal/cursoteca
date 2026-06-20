@@ -22,6 +22,12 @@ class LessonController(
         @PathVariable courseId: Long,
     ): List<LessonResponse> = service.listLessons(courseId).map { it.toResponse() }
 
+    @GetMapping("/{lessonId}")
+    fun get(
+        @PathVariable courseId: Long,
+        @PathVariable lessonId: Long,
+    ): LessonDetailResponse = service.getLesson(courseId, lessonId)
+
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     fun create(

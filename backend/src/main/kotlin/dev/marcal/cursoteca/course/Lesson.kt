@@ -69,6 +69,25 @@ data class LessonResponse(
     val updatedAt: OffsetDateTime,
 )
 
+data class LessonSectionResponse(
+    val id: Long,
+    val title: String,
+    val slug: String,
+)
+
+data class LessonDetailResponse(
+    val id: Long,
+    val courseId: Long,
+    val sectionId: Long?,
+    val sectionPath: List<LessonSectionResponse>,
+    val title: String,
+    val description: String,
+    val videoUrl: String,
+    val position: Int,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
+)
+
 fun Lesson.toResponse() =
     LessonResponse(
         id = requireNotNull(id),
@@ -81,3 +100,30 @@ fun Lesson.toResponse() =
         createdAt = createdAt,
         updatedAt = updatedAt,
     )
+
+fun Lesson.toDetailResponse(): LessonDetailResponse {
+    val sectionPath = mutableListOf<LessonSectionResponse>()
+    var currentSection = section
+    while (currentSection != null) {
+        sectionPath +=
+            LessonSectionResponse(
+                id = requireNotNull(currentSection.id),
+                title = currentSection.title,
+                slug = currentSection.slug,
+            )
+        currentSection = currentSection.parent
+    }
+
+    return LessonDetailResponse(
+        id = requireNotNull(id),
+        courseId = requireNotNull(course.id),
+        sectionId = section?.id,
+        sectionPath = sectionPath.reversed(),
+        title = title,
+        description = description,
+        videoUrl = videoUrl,
+        position = position,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
+}

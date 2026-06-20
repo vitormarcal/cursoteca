@@ -44,6 +44,11 @@ enum class ReasonEnum(
         2003,
         "Course section was not found.",
     ),
+    LESSON_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        2004,
+        "Lesson was not found.",
+    ),
     MALFORMED_REQUEST(
         HttpStatus.BAD_REQUEST,
         9001,

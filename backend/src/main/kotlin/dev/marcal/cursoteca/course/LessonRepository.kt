@@ -9,6 +9,11 @@ import org.springframework.stereotype.Repository
 interface LessonRepository : JpaRepository<Lesson, Long> {
     fun findAllByCourseIdOrderByPositionAscIdAsc(courseId: Long): List<Lesson>
 
+    fun findByIdAndCourseId(
+        id: Long,
+        courseId: Long,
+    ): Lesson?
+
     @Query(
         """
         select coalesce(max(lesson.position), 0)

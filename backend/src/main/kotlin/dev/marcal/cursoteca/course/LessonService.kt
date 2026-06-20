@@ -19,6 +19,18 @@ class LessonService(
         return lessonRepository.findAllByCourseIdOrderByPositionAscIdAsc(courseId)
     }
 
+    @Transactional(readOnly = true)
+    fun getLesson(
+        courseId: Long,
+        lessonId: Long,
+    ): LessonDetailResponse {
+        if (!courseRepository.existsById(courseId)) {
+            throw CourseNotFoundException(courseId)
+        }
+        return lessonRepository.findByIdAndCourseId(lessonId, courseId)?.toDetailResponse()
+            ?: throw LessonNotFoundException(lessonId)
+    }
+
     @Transactional
     fun createLesson(
         courseId: Long,

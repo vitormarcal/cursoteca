@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest'
 import LessonList from '../../app/components/LessonList.vue'
 
 describe('LessonList', () => {
-  it('renders lesson metadata and video player', async () => {
+  it('renders lesson metadata and link without embedding a video player', async () => {
     const wrapper = await mountSuspended(LessonList, {
       props: {
+        courseSlug: 'sample',
         lessons: [{
           id: 1,
           courseId: 2,
@@ -22,6 +23,7 @@ describe('LessonList', () => {
 
     expect(wrapper.text()).toContain('Lesson 01')
     expect(wrapper.text()).toContain('Introduction')
-    expect(wrapper.find('video').attributes('src')).toBe('/assets/courses/sample/lessons/video.mp4')
+    expect(wrapper.find('video').exists()).toBe(false)
+    expect(wrapper.find('a').attributes('href')).toBe('/courses/sample/lessons/1')
   })
 })

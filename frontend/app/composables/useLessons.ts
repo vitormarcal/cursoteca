@@ -1,8 +1,9 @@
-import type { CreateLessonInput, Lesson } from '~/types/lesson'
+import type { CreateLessonInput, Lesson, LessonDetail } from '~/types/lesson'
 import { hasInjectionContext, inject } from 'vue'
 
 export type LessonsApi = {
   createLesson: (courseId: number, input: CreateLessonInput) => Promise<Lesson>
+  getLesson: (courseId: number, lessonId: number) => ReturnType<typeof useFetch<LessonDetail>>
   listLessons: (courseId: number) => ReturnType<typeof useFetch<Lesson[]>>
 }
 
@@ -14,8 +15,16 @@ export function useLessons(): LessonsApi {
 
   function listLessons(courseId: number) {
     return useFetch<Lesson[]>(`/api/courses/${courseId}/lessons`, {
+      key: `course-${courseId}-lessons`,
       baseURL: backendBaseUrl(),
       default: () => []
+    })
+  }
+
+  function getLesson(courseId: number, lessonId: number) {
+    return useFetch<LessonDetail>(`/api/courses/${courseId}/lessons/${lessonId}`, {
+      key: `course-${courseId}-lesson-${lessonId}`,
+      baseURL: backendBaseUrl()
     })
   }
 
@@ -37,6 +46,7 @@ export function useLessons(): LessonsApi {
 
   return {
     createLesson,
+    getLesson,
     listLessons
   }
 }

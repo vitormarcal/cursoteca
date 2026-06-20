@@ -44,3 +44,10 @@ class InvalidLessonInputException(
         reason = ReasonEnum.INVALID_LESSON_INPUT,
         details = details,
     )
+
+class LessonNotFoundException(
+    lessonId: Long,
+) : BusinessException(
+        reason = ReasonEnum.LESSON_NOT_FOUND,
+        details = mapOf("lessonId" to lessonId.toString()),
+    )

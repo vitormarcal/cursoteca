@@ -1,7 +1,7 @@
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { nextTick, ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
-import CourseDetailPage from '../../app/pages/courses/[slug].vue'
+import CourseDetailPage from '../../app/pages/courses/[slug]/index.vue'
 
 const useFetchMock = vi.hoisted(() => vi.fn())
 const useRouteMock = vi.hoisted(() => vi.fn())
@@ -55,6 +55,7 @@ describe('course detail page', () => {
           },
           lessonsApi: {
             createLesson: vi.fn(),
+            getLesson: vi.fn(),
             listLessons: vi.fn().mockResolvedValue({
               data: ref([]),
               pending: ref(false),
@@ -107,6 +108,7 @@ describe('course detail page', () => {
           },
           lessonsApi: {
             createLesson: vi.fn(),
+            getLesson: vi.fn(),
             listLessons: vi.fn().mockResolvedValue({
               data: ref([{
                 id: 1,
@@ -129,6 +131,7 @@ describe('course detail page', () => {
     })
 
     expect(wrapper.text()).toContain('Introduction')
-    expect(wrapper.find('video').attributes('src')).toBe('/assets/courses/sample-course/lessons/video.mp4')
+    expect(wrapper.find('video').exists()).toBe(false)
+    expect(wrapper.find('a[href="/courses/sample-course/lessons/1"]').exists()).toBe(true)
   })
 })

@@ -281,7 +281,9 @@ h2 {
 }
 
 .lesson-item {
-  display: grid;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
   border-top: 1px solid #dce3e7;
   padding-top: 12px;
@@ -298,11 +300,38 @@ h2 {
   line-height: 1.5;
 }
 
-.lesson-item video {
+.lesson-item .button {
+  flex: 0 0 auto;
+}
+
+.lesson-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: #62707a;
+  font-size: 0.92rem;
+}
+
+.lesson-player {
   width: 100%;
-  max-height: 420px;
-  border-radius: 6px;
+  max-height: min(70vh, 720px);
+  border-radius: 8px;
   background: #111111;
+}
+
+.lesson-description {
+  margin-top: 24px;
+  border: 1px solid #dce3e7;
+  border-radius: 8px;
+  padding: 20px;
+  background: #ffffff;
+}
+
+.lesson-description p {
+  margin: 0;
+  color: #62707a;
+  line-height: 1.6;
 }
 
 @media (max-width: 640px) {
@@ -320,5 +349,10 @@ h2 {
   .course-detail,
   .section-layout {
     grid-template-columns: 1fr;
+  }
+
+  .lesson-item {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

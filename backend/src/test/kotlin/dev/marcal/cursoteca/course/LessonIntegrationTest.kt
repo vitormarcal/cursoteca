@@ -41,13 +41,26 @@ class LessonIntegrationTest : BaseIntegrationTest() {
                 content { bytes(byteArrayOf(0, 0, 0, 24)) }
             }
 
-        uploadLesson(courseId, "First class", sectionId)
+        val sectionLessonResult =
+            uploadLesson(courseId, "First class", sectionId)
+                .andExpect {
+                    status { isCreated() }
+                    jsonPath("$.sectionId") { value(sectionId) }
+                    jsonPath("$.title") { value("First class") }
+                    jsonPath("$.description") { value("Lesson description") }
+                    jsonPath("$.position") { value(1) }
+                }.andReturn()
+        val sectionLessonId = responseId(sectionLessonResult.response.contentAsString)
+
+        mockMvc
+            .get("/api/courses/$courseId/lessons/$sectionLessonId")
             .andExpect {
-                status { isCreated() }
-                jsonPath("$.sectionId") { value(sectionId) }
+                status { isOk() }
+                jsonPath("$.id") { value(sectionLessonId) }
+                jsonPath("$.courseId") { value(courseId) }
+                jsonPath("$.sectionPath[0].id") { value(sectionId) }
+                jsonPath("$.sectionPath[0].title") { value("Module 01") }
                 jsonPath("$.title") { value("First class") }
-                jsonPath("$.description") { value("Lesson description") }
-                jsonPath("$.position") { value(1) }
             }
 
         mockMvc
@@ -101,6 +114,32 @@ class LessonIntegrationTest : BaseIntegrationTest() {
             .andExpect {
                 status { isNotFound() }
                 jsonPath("$.code") { value(2001) }
+            }
+    }
+
+    @Test
+    fun `does not expose lesson through another course`() {
+        val ownerCourseId = createCourse("Lesson Owner Course")
+        val anotherCourseId = createCourse("Another Course")
+        val lessonResult =
+            uploadLesson(ownerCourseId, "Private lesson", null)
+                .andExpect { status { isCreated() } }
+                .andReturn()
+        val lessonId = responseId(lessonResult.response.contentAsString)
+
+        mockMvc
+            .get("/api/courses/$anotherCourseId/lessons/$lessonId")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.code") { value(2004) }
+                jsonPath("$.details.lessonId") { value(lessonId.toString()) }
+            }
+
+        mockMvc
+            .get("/api/courses/$ownerCourseId/lessons/999999")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.code") { value(2004) }
             }
     }
 
