@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { CourseSection } from '~/types/course-section'
+import type { Lesson } from '~/types/lesson'
 
 defineOptions({
   name: 'CourseSectionList'
 })
 
-defineProps<{
+withDefaults(defineProps<{
   sections: CourseSection[]
-}>()
+  lessons?: Lesson[]
+}>(), {
+  lessons: () => []
+})
 </script>
 
 <template>
@@ -18,7 +22,9 @@ defineProps<{
         <p v-if="section.description">{{ section.description }}</p>
       </div>
 
-      <CourseSectionList v-if="section.children.length" :sections="section.children" />
+      <LessonList :lessons="lessons.filter(lesson => lesson.sectionId === section.id)" />
+
+      <CourseSectionList v-if="section.children.length" :sections="section.children" :lessons="lessons" />
     </li>
   </ol>
 </template>

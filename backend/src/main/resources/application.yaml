@@ -7,8 +7,8 @@ spring:
     password: ${DATABASE_PASSWORD:cursoteca}
   servlet:
     multipart:
-      max-file-size: ${CURSOTECA_MAX_UPLOAD_SIZE:20MB}
-      max-request-size: ${CURSOTECA_MAX_UPLOAD_SIZE:20MB}
+      max-file-size: ${CURSOTECA_MAX_UPLOAD_SIZE:2GB}
+      max-request-size: ${CURSOTECA_MAX_UPLOAD_SIZE:2GB}
   jpa:
     open-in-view: false
 

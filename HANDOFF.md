@@ -1,5 +1,32 @@
 # Handoff do projeto
 
+## Implementação real (`backend/` e `frontend/`)
+
+A aplicação real está sendo reimplementada com Spring Boot, PostgreSQL e Nuxt. Ela é independente da POC Node.js descrita nas seções seguintes.
+
+Fluxos já disponíveis na aplicação real:
+
+- cadastro, listagem e detalhe de cursos com imagem de capa;
+- criação e listagem de seções hierárquicas;
+- cadastro de aulas com upload manual de vídeo MP4;
+- vínculo opcional da aula com uma seção do mesmo curso;
+- listagem das aulas dentro das seções ou diretamente no curso;
+- reprodução dos vídeos pelo player HTML5;
+- armazenamento dos vídeos em `courses/<slug>/lessons/<uuid>.mp4` dentro do diretório configurado de assets.
+
+Endpoints de aulas da aplicação real:
+
+```text
+GET  /api/courses/{courseId}/lessons
+POST /api/courses/{courseId}/lessons
+```
+
+O `POST` usa `multipart/form-data` com `sectionId` opcional, `title`, `description` e `video`. Somente arquivos `.mp4` com `Content-Type: video/mp4` são aceitos.
+
+Próximos incrementos planejados para a aplicação real: materiais de aula/seção/curso (PDF, link e áudio) e download de vídeos com `yt-dlp`.
+
+## POC Node.js
+
 Este projeto é um servidor Node.js simples para organizar cursos locais, baixar vídeos de aula com `yt-dlp`, anexar PDFs, links e descrições, mantendo a organização relacional em SQLite e os arquivos físicos no disco.
 
 ## Como rodar

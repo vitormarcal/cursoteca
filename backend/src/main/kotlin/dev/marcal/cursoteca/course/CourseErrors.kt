@@ -30,3 +30,17 @@ class InvalidCourseSectionInputException(
         reason = ReasonEnum.INVALID_COURSE_SECTION_INPUT,
         details = details,
     )
+
+class CourseSectionNotFoundException(
+    sectionId: Long,
+) : BusinessException(
+        reason = ReasonEnum.COURSE_SECTION_NOT_FOUND,
+        details = mapOf("sectionId" to sectionId.toString()),
+    )
+
+class InvalidLessonInputException(
+    details: Map<String, String>,
+) : BusinessException(
+        reason = ReasonEnum.INVALID_LESSON_INPUT,
+        details = details,
+    )

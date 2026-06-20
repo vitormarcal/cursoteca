@@ -52,6 +52,15 @@ describe('course detail page', () => {
               error: ref(null),
               refresh: vi.fn()
             })
+          },
+          lessonsApi: {
+            createLesson: vi.fn(),
+            listLessons: vi.fn().mockResolvedValue({
+              data: ref([]),
+              pending: ref(false),
+              error: ref(null),
+              refresh: vi.fn()
+            })
           }
         }
       }
@@ -66,5 +75,60 @@ describe('course detail page', () => {
     await nextTick()
 
     expect(wrapper.text()).toContain('Course section input is invalid. title is required')
+  })
+
+  it('renders lessons returned by the backend', async () => {
+    useRouteMock.mockReturnValue({ params: { slug: 'sample-course' } })
+    useFetchMock.mockResolvedValueOnce({
+      data: ref({
+        id: 42,
+        name: 'Sample Course',
+        slug: 'sample-course',
+        description: 'Course description',
+        imageUrl: '/assets/courses/sample-course/image.jpg',
+        createdAt: '2026-06-14T13:36:55Z',
+        updatedAt: '2026-06-14T13:36:55Z'
+      }),
+      pending: ref(false),
+      error: ref(null)
+    })
+
+    const wrapper = await mountSuspended(CourseDetailPage, {
+      global: {
+        provide: {
+          courseSectionsApi: {
+            createSection: vi.fn(),
+            listSections: vi.fn().mockResolvedValue({
+              data: ref([]),
+              pending: ref(false),
+              error: ref(null),
+              refresh: vi.fn()
+            })
+          },
+          lessonsApi: {
+            createLesson: vi.fn(),
+            listLessons: vi.fn().mockResolvedValue({
+              data: ref([{
+                id: 1,
+                courseId: 42,
+                sectionId: null,
+                title: 'Introduction',
+                description: 'First lesson',
+                videoUrl: '/assets/courses/sample-course/lessons/video.mp4',
+                position: 1,
+                createdAt: '2026-06-14T13:36:55Z',
+                updatedAt: '2026-06-14T13:36:55Z'
+              }]),
+              pending: ref(false),
+              error: ref(null),
+              refresh: vi.fn()
+            })
+          }
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('Introduction')
+    expect(wrapper.find('video').attributes('src')).toBe('/assets/courses/sample-course/lessons/video.mp4')
   })
 })

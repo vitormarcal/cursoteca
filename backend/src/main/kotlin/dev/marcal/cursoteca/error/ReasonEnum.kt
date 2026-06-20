@@ -24,6 +24,11 @@ enum class ReasonEnum(
         1003,
         "Asset path must stay inside the configured assets directory.",
     ),
+    INVALID_LESSON_INPUT(
+        HttpStatus.BAD_REQUEST,
+        1004,
+        "Lesson input is invalid.",
+    ),
     COURSE_NOT_FOUND(
         HttpStatus.NOT_FOUND,
         2001,
@@ -33,6 +38,11 @@ enum class ReasonEnum(
         HttpStatus.NOT_FOUND,
         2002,
         "Course section parent was not found.",
+    ),
+    COURSE_SECTION_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        2003,
+        "Course section was not found.",
     ),
     MALFORMED_REQUEST(
         HttpStatus.BAD_REQUEST,

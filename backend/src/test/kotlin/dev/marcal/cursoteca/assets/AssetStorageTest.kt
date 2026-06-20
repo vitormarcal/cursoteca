@@ -38,4 +38,18 @@ class AssetStorageTest {
             }
         assertEquals(ReasonEnum.INVALID_ASSET_PATH, error.reason)
     }
+
+    @Test
+    fun `deletes a stored file`(
+        @TempDir assetsDir: Path,
+    ) {
+        val storage = AssetStorage(AssetsProperties(assetsDir.toString()))
+        val file = MockMultipartFile("file", "lesson.mp4", "video/mp4", byteArrayOf(1, 2, 3))
+        val path = Path.of("courses/kotlin/lessons/lesson.mp4")
+        storage.save(path, file)
+
+        storage.delete(path)
+
+        assertTrue(Files.notExists(assetsDir.resolve(path)))
+    }
 }
