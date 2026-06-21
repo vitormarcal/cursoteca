@@ -10,6 +10,7 @@ class LessonService(
     private val sectionRepository: CourseSectionRepository,
     private val lessonRepository: LessonRepository,
     private val lessonAssetStorage: LessonAssetStorage,
+    private val resourceRepository: CourseResourceRepository,
 ) {
     @Transactional(readOnly = true)
     fun listLessons(courseId: Long): List<Lesson> {
@@ -27,8 +28,41 @@ class LessonService(
         if (!courseRepository.existsById(courseId)) {
             throw CourseNotFoundException(courseId)
         }
-        return lessonRepository.findByIdAndCourseId(lessonId, courseId)?.toDetailResponse()
-            ?: throw LessonNotFoundException(lessonId)
+        val lesson = lessonRepository.findByIdAndCourseId(lessonId, courseId) ?: throw LessonNotFoundException(lessonId)
+        return lesson.toDetailResponse(resourceGroups(lesson))
+    }
+
+    private fun resourceGroups(lesson: Lesson): LessonResourceGroupsResponse {
+        val lessonResources =
+            resourceRepository.findAllByLessonIdOrderByPositionAscIdAsc(requireNotNull(lesson.id)).map { it.toResponse() }
+        val sectionResources =
+            lesson.section
+                ?.id
+                ?.let(resourceRepository::findAllBySectionIdOrderByPositionAscIdAsc)
+                .orEmpty()
+                .map { it.toResponse() }
+        val ancestors = mutableListOf<AncestorResourceGroupResponse>()
+        var ancestor = lesson.section?.parent
+        while (ancestor != null) {
+            val resources =
+                resourceRepository
+                    .findAllBySectionIdOrderByPositionAscIdAsc(requireNotNull(ancestor.id))
+                    .map { it.toResponse() }
+            if (resources.isNotEmpty()) {
+                ancestors +=
+                    AncestorResourceGroupResponse(
+                        section = LessonSectionResponse(requireNotNull(ancestor.id), ancestor.title, ancestor.slug),
+                        resources = resources,
+                    )
+            }
+            ancestor = ancestor.parent
+        }
+        val courseResources =
+            resourceRepository
+                .findAllByCourseIdAndScopeOrderByPositionAscIdAsc(lesson.course.id!!, ResourceScope.COURSE)
+                .map { it.toResponse() }
+
+        return LessonResourceGroupsResponse(lessonResources, sectionResources, ancestors, courseResources)
     }
 
     @Transactional

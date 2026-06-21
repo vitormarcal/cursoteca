@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type { CreateResourceLinkInput } from '~/types/resource'
+
 const route = useRoute()
 const slug = String(route.params.slug)
 const lessonId = Number(route.params.lessonId)
 const { getCourseBySlug } = useCourses()
 const { getLesson } = useLessons()
+const { createLink } = useResources()
 
 const {
   data: course,
@@ -17,6 +20,39 @@ const lessonState = course.value && Number.isInteger(lessonId) && lessonId > 0
 const lesson = lessonState?.data ?? ref(null)
 const lessonPending = lessonState?.pending ?? ref(false)
 const lessonError = lessonState?.error ?? ref(true)
+const refreshLesson = lessonState?.refresh ?? (() => Promise.resolve())
+const resourceSubmitting = ref(false)
+const resourceErrorMessage = ref('')
+const resourceSuccessMessage = ref('')
+
+const resourceTargets = computed(() => {
+  if (!lesson.value) return []
+  return [
+    { scope: 'LESSON' as const, lessonId: lesson.value.id, label: 'Esta aula' },
+    ...lesson.value.sectionPath.slice().reverse().map(section => ({
+      scope: 'SECTION' as const,
+      sectionId: section.id,
+      label: section.title
+    })),
+    { scope: 'COURSE' as const, label: 'Curso' }
+  ]
+})
+
+async function submitResourceLink(input: CreateResourceLinkInput) {
+  if (!course.value) return
+  resourceErrorMessage.value = ''
+  resourceSuccessMessage.value = ''
+  resourceSubmitting.value = true
+  try {
+    await createLink(course.value.id, input)
+    await refreshLesson()
+    resourceSuccessMessage.value = 'Link adicionado.'
+  } catch (error) {
+    resourceErrorMessage.value = apiErrorMessage(error, 'Não foi possível adicionar o link.')
+  } finally {
+    resourceSubmitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -49,6 +85,19 @@ const lessonError = lessonState?.error ?? ref(true)
       <section v-if="lesson.description" class="lesson-description">
         <h2>Sobre esta aula</h2>
         <p>{{ lesson.description }}</p>
+      </section>
+
+      <LessonResources :groups="lesson.resourceGroups" />
+
+      <section class="lesson-resource-form">
+        <h2>Adicionar link</h2>
+        <ResourceLinkForm
+          :targets="resourceTargets"
+          :submitting="resourceSubmitting"
+          :error-message="resourceErrorMessage"
+          :success-message="resourceSuccessMessage"
+          @submit="submitResourceLink"
+        />
       </section>
     </template>
   </main>

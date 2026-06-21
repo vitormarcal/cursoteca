@@ -80,12 +80,25 @@ data class LessonDetailResponse(
     val courseId: Long,
     val sectionId: Long?,
     val sectionPath: List<LessonSectionResponse>,
+    val resourceGroups: LessonResourceGroupsResponse,
     val title: String,
     val description: String,
     val videoUrl: String,
     val position: Int,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
+)
+
+data class AncestorResourceGroupResponse(
+    val section: LessonSectionResponse,
+    val resources: List<CourseResourceResponse>,
+)
+
+data class LessonResourceGroupsResponse(
+    val lesson: List<CourseResourceResponse> = emptyList(),
+    val section: List<CourseResourceResponse> = emptyList(),
+    val ancestors: List<AncestorResourceGroupResponse> = emptyList(),
+    val course: List<CourseResourceResponse> = emptyList(),
 )
 
 fun Lesson.toResponse() =
@@ -101,7 +114,7 @@ fun Lesson.toResponse() =
         updatedAt = updatedAt,
     )
 
-fun Lesson.toDetailResponse(): LessonDetailResponse {
+fun Lesson.toDetailResponse(resourceGroups: LessonResourceGroupsResponse = LessonResourceGroupsResponse()): LessonDetailResponse {
     val sectionPath = mutableListOf<LessonSectionResponse>()
     var currentSection = section
     while (currentSection != null) {
@@ -119,6 +132,7 @@ fun Lesson.toDetailResponse(): LessonDetailResponse {
         courseId = requireNotNull(course.id),
         sectionId = section?.id,
         sectionPath = sectionPath.reversed(),
+        resourceGroups = resourceGroups,
         title = title,
         description = description,
         videoUrl = videoUrl,

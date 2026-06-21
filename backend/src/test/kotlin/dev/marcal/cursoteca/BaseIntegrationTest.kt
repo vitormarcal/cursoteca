@@ -24,7 +24,7 @@ abstract class BaseIntegrationTest {
 
     @BeforeEach
     fun resetIntegrationState() {
-        jdbcTemplate.execute("truncate table lessons, course_sections, courses restart identity cascade")
+        jdbcTemplate.execute("truncate table resources, lessons, course_sections, courses restart identity cascade")
         resetAssetsDirectory()
     }
 

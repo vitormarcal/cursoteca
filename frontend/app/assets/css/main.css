@@ -201,6 +201,12 @@ h2 {
   font-weight: 700;
 }
 
+.form-success {
+  margin: 0;
+  color: #0f766e;
+  font-weight: 700;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -332,6 +338,42 @@ h2 {
   margin: 0;
   color: #62707a;
   line-height: 1.6;
+}
+
+.lesson-resources,
+.lesson-resource-form {
+  margin-top: 24px;
+  border: 1px solid #dce3e7;
+  border-radius: 8px;
+  padding: 20px;
+  background: #ffffff;
+}
+
+.resource-group + .resource-group {
+  margin-top: 20px;
+}
+
+.resource-list {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resource-list li {
+  border-left: 3px solid #0f766e;
+  padding-left: 12px;
+}
+
+.resource-list a {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.resource-list p {
+  margin: 4px 0 0;
+  color: #62707a;
 }
 
 @media (max-width: 640px) {

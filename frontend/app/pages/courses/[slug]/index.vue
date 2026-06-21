@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { CreateCourseSectionInput } from '~/types/course-section'
 import type { CreateLessonInput } from '~/types/lesson'
+import type { CreateResourceLinkInput, ResourceTarget } from '~/types/resource'
 
 const route = useRoute()
 const slug = String(route.params.slug)
 const { getCourseBySlug } = useCourses()
 const { listSections, createSection } = useCourseSections()
 const { listLessons, createLesson } = useLessons()
+const { createLink } = useResources()
 
 const {
   data: course,
@@ -33,8 +35,23 @@ const submitting = ref(false)
 const errorMessage = ref('')
 const lessonSubmitting = ref(false)
 const lessonErrorMessage = ref('')
+const resourceSubmitting = ref(false)
+const resourceErrorMessage = ref('')
+const resourceSuccessMessage = ref('')
 
 const courseLessons = computed(() => lessons.value.filter(lesson => lesson.sectionId === null))
+const resourceTargets = computed<ResourceTarget[]>(() => {
+  if (!course.value) return []
+  const targets: ResourceTarget[] = [{ scope: 'COURSE', label: 'Curso' }]
+  function addSections(items: typeof sections.value, depth = 0) {
+    for (const section of items) {
+      targets.push({ scope: 'SECTION', sectionId: section.id, label: `${'— '.repeat(depth + 1)}${section.title}` })
+      addSections(section.children, depth + 1)
+    }
+  }
+  addSections(sections.value)
+  return targets
+})
 
 async function submitSection(input: CreateCourseSectionInput) {
   if (!course.value) {
@@ -69,6 +86,21 @@ async function submitLesson(input: CreateLessonInput) {
     lessonErrorMessage.value = apiErrorMessage(error, 'Não foi possível cadastrar a aula.')
   } finally {
     lessonSubmitting.value = false
+  }
+}
+
+async function submitResourceLink(input: CreateResourceLinkInput) {
+  if (!course.value) return
+  resourceErrorMessage.value = ''
+  resourceSuccessMessage.value = ''
+  resourceSubmitting.value = true
+  try {
+    await createLink(course.value.id, input)
+    resourceSuccessMessage.value = 'Link adicionado.'
+  } catch (error) {
+    resourceErrorMessage.value = apiErrorMessage(error, 'Não foi possível adicionar o link.')
+  } finally {
+    resourceSubmitting.value = false
   }
 }
 </script>
@@ -140,6 +172,17 @@ async function submitLesson(input: CreateLessonInput) {
               :submitting="submitting"
               :error-message="errorMessage"
               @submit="submitSection"
+            />
+          </section>
+
+          <section>
+            <h2>Novo link</h2>
+            <ResourceLinkForm
+              :targets="resourceTargets"
+              :submitting="resourceSubmitting"
+              :error-message="resourceErrorMessage"
+              :success-message="resourceSuccessMessage"
+              @submit="submitResourceLink"
             />
           </section>
         </aside>

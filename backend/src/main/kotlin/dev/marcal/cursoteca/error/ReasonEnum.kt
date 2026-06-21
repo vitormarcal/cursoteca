@@ -29,6 +29,11 @@ enum class ReasonEnum(
         1004,
         "Lesson input is invalid.",
     ),
+    INVALID_RESOURCE_INPUT(
+        HttpStatus.BAD_REQUEST,
+        1005,
+        "Resource input is invalid.",
+    ),
     COURSE_NOT_FOUND(
         HttpStatus.NOT_FOUND,
         2001,

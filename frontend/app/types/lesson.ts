@@ -1,3 +1,5 @@
+import type { CourseResource } from './resource'
+
 export type Lesson = {
   id: number
   courseId: number
@@ -18,6 +20,15 @@ export type LessonSection = {
 
 export type LessonDetail = Lesson & {
   sectionPath: LessonSection[]
+  resourceGroups: {
+    lesson: CourseResource[]
+    section: CourseResource[]
+    ancestors: Array<{
+      section: LessonSection
+      resources: CourseResource[]
+    }>
+    course: CourseResource[]
+  }
 }
 
 export type CreateLessonInput = {

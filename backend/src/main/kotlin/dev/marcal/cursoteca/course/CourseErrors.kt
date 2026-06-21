@@ -51,3 +51,10 @@ class LessonNotFoundException(
         reason = ReasonEnum.LESSON_NOT_FOUND,
         details = mapOf("lessonId" to lessonId.toString()),
     )
+
+class InvalidResourceInputException(
+    details: Map<String, String>,
+) : BusinessException(
+        reason = ReasonEnum.INVALID_RESOURCE_INPUT,
+        details = details,
+    )

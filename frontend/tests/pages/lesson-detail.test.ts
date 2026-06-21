@@ -37,6 +37,25 @@ describe('lesson detail page', () => {
           { id: 10, title: 'Stage 01', slug: 'stage-01' },
           { id: 11, title: 'Module 01', slug: 'module-01' }
         ],
+        resourceGroups: {
+          lesson: [{
+            id: 20,
+            courseId: 42,
+            sectionId: null,
+            lessonId: 7,
+            type: 'LINK',
+            scope: 'LESSON',
+            title: 'Lesson reference',
+            description: 'Reference description',
+            url: 'https://example.com/reference',
+            position: 1,
+            createdAt: '2026-06-14T13:36:55Z',
+            updatedAt: '2026-06-14T13:36:55Z'
+          }],
+          section: [],
+          ancestors: [],
+          course: []
+        },
         title: 'Lesson 01',
         description: 'Introduction',
         videoUrl: '/assets/courses/sample-course/lessons/video.mp4',
@@ -65,6 +84,7 @@ describe('lesson detail page', () => {
     expect(wrapper.text()).toContain('Stage 01')
     expect(wrapper.text()).toContain('Module 01')
     expect(wrapper.text()).toContain('Introduction')
+    expect(wrapper.text()).toContain('Lesson reference')
     expect(wrapper.find('video').attributes('src')).toBe('/assets/courses/sample-course/lessons/video.mp4')
   })
 

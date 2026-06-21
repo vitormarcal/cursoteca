@@ -13,6 +13,8 @@ Fluxos já disponíveis na aplicação real:
 - listagem das aulas dentro das seções ou diretamente no curso;
 - página dedicada da aula com contexto da hierarquia de seções;
 - reprodução dos vídeos pelo player HTML5 sem carregar players na árvore do curso;
+- cadastro de links vinculados ao curso, a uma seção ou a uma aula;
+- agrupamento dos links no detalhe da aula por aula, seção atual, seções ancestrais e curso;
 - armazenamento dos vídeos em `courses/<slug>/lessons/<uuid>.mp4` dentro do diretório configurado de assets.
 
 Endpoints de aulas da aplicação real:
@@ -21,13 +23,16 @@ Endpoints de aulas da aplicação real:
 GET  /api/courses/{courseId}/lessons
 GET  /api/courses/{courseId}/lessons/{lessonId}
 POST /api/courses/{courseId}/lessons
+POST /api/courses/{courseId}/resources/links
 ```
 
 O `POST` usa `multipart/form-data` com `sectionId` opcional, `title`, `description` e `video`. Somente arquivos `.mp4` com `Content-Type: video/mp4` são aceitos.
 
 O endpoint de detalhe valida que a aula pertence ao curso e retorna `sectionPath`, ordenado da seção raiz até a seção diretamente vinculada à aula. No frontend, a rota correspondente é `/courses/{slug}/lessons/{lessonId}`.
 
-Próximos incrementos planejados para a aplicação real: materiais de aula/seção/curso (PDF, link e áudio) e download de vídeos com `yt-dlp`.
+O cadastro de links usa JSON com `scope` (`COURSE`, `SECTION` ou `LESSON`), o identificador do alvo correspondente, `title`, `description` e uma URL HTTP/HTTPS. O detalhe da aula retorna os recursos em `resourceGroups`, preservando o contexto dos materiais herdados.
+
+Próximos incrementos planejados para a aplicação real: arquivos de aula/seção/curso (PDF e áudio) e download de vídeos com `yt-dlp`.
 
 ## POC Node.js
 
