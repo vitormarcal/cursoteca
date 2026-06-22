@@ -1,5 +1,5 @@
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
-import { nextTick, ref } from 'vue'
+import { ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import CourseDetailPage from '../../app/pages/courses/[slug]/index.vue'
 
@@ -10,7 +10,7 @@ mockNuxtImport('useFetch', () => useFetchMock)
 mockNuxtImport('useRoute', () => useRouteMock)
 
 describe('course detail page', () => {
-  it('renders structured backend errors when section creation fails', async () => {
+  it('keeps management actions outside the study flow', async () => {
     useRouteMock.mockReturnValue({
       params: {
         slug: 'sample-language-course'
@@ -30,22 +30,11 @@ describe('course detail page', () => {
       error: ref(null)
     })
 
-    const createSectionMock = vi.fn().mockRejectedValueOnce({
-      data: {
-        status: 400,
-        code: 1002,
-        description: 'Course section input is invalid.',
-        details: {
-          title: 'title is required'
-        }
-      }
-    })
-
     const wrapper = await mountSuspended(CourseDetailPage, {
       global: {
         provide: {
           courseSectionsApi: {
-            createSection: createSectionMock,
+            createSection: vi.fn(),
             listSections: vi.fn().mockResolvedValue({
               data: ref([]),
               pending: ref(false),
@@ -62,29 +51,13 @@ describe('course detail page', () => {
               error: ref(null),
               refresh: vi.fn()
             })
-          },
-          lessonDownloadsApi: {
-            createDownload: vi.fn(),
-            listDownloads: vi.fn().mockResolvedValue({
-              data: ref([]),
-              pending: ref(false),
-              error: ref(null),
-              refresh: vi.fn()
-            })
           }
         }
       }
     })
 
-    await wrapper.findComponent({ name: 'CourseSectionForm' }).vm.$emit('submit', {
-      parentId: null,
-      title: '',
-      description: ''
-    })
-    await nextTick()
-    await nextTick()
-
-    expect(wrapper.text()).toContain('Course section input is invalid. title is required')
+    expect(wrapper.findComponent({ name: 'CourseSectionForm' }).exists()).toBe(false)
+    expect(wrapper.find('a[href="/courses/sample-language-course/manage"]').exists()).toBe(true)
   })
 
   it('renders lessons returned by the backend', async () => {
@@ -130,15 +103,6 @@ describe('course detail page', () => {
                 createdAt: '2026-06-14T13:36:55Z',
                 updatedAt: '2026-06-14T13:36:55Z'
               }]),
-              pending: ref(false),
-              error: ref(null),
-              refresh: vi.fn()
-            })
-          },
-          lessonDownloadsApi: {
-            createDownload: vi.fn(),
-            listDownloads: vi.fn().mockResolvedValue({
-              data: ref([]),
               pending: ref(false),
               error: ref(null),
               refresh: vi.fn()

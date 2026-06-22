@@ -1,134 +1,124 @@
 <script setup lang="ts">
-import type { CreateResourceFileInput, CreateResourceLinkInput } from '~/types/resource'
-
 const route = useRoute()
 const slug = String(route.params.slug)
 const lessonId = Number(route.params.lessonId)
 const { getCourseBySlug } = useCourses()
-const { getLesson } = useLessons()
-const { createFile, createLink } = useResources()
+const { getLesson, listLessons } = useLessons()
+const { listSections } = useCourseSections()
 
-const {
-  data: course,
-  pending: coursePending,
-  error: courseError
-} = await getCourseBySlug(slug)
-
+const { data: course, pending: coursePending, error: courseError } = await getCourseBySlug(slug)
 const lessonState = course.value && Number.isInteger(lessonId) && lessonId > 0
   ? await getLesson(course.value.id, lessonId)
   : null
+const sectionState = course.value ? await listSections(course.value.id) : null
+const lessonListState = course.value ? await listLessons(course.value.id) : null
+
 const lesson = lessonState?.data ?? ref(null)
 const lessonPending = lessonState?.pending ?? ref(false)
 const lessonError = lessonState?.error ?? ref(true)
-const refreshLesson = lessonState?.refresh ?? (() => Promise.resolve())
-const resourceSubmitting = ref(false)
-const resourceErrorMessage = ref('')
-const resourceSuccessMessage = ref('')
-const fileSubmitting = ref(false)
-const fileErrorMessage = ref('')
-const fileSuccessMessage = ref('')
-
-const resourceTargets = computed(() => {
-  if (!lesson.value) return []
-  return [
-    { scope: 'LESSON' as const, lessonId: lesson.value.id, label: 'Esta aula' },
-    ...lesson.value.sectionPath.slice().reverse().map(section => ({
-      scope: 'SECTION' as const,
-      sectionId: section.id,
-      label: section.title
-    })),
-    { scope: 'COURSE' as const, label: 'Curso' }
-  ]
-})
-
-async function submitResourceLink(input: CreateResourceLinkInput) {
-  if (!course.value) return
-  resourceErrorMessage.value = ''
-  resourceSuccessMessage.value = ''
-  resourceSubmitting.value = true
-  try {
-    await createLink(course.value.id, input)
-    await refreshLesson()
-    resourceSuccessMessage.value = 'Link adicionado.'
-  } catch (error) {
-    resourceErrorMessage.value = apiErrorMessage(error, 'Não foi possível adicionar o link.')
-  } finally {
-    resourceSubmitting.value = false
-  }
-}
-
-async function submitResourceFile(input: CreateResourceFileInput) {
-  if (!course.value) return
-  fileErrorMessage.value = ''
-  fileSuccessMessage.value = ''
-  fileSubmitting.value = true
-  try {
-    await createFile(course.value.id, input)
-    await refreshLesson()
-    fileSuccessMessage.value = 'Arquivo adicionado.'
-  } catch (error) {
-    fileErrorMessage.value = apiErrorMessage(error, 'Não foi possível enviar o arquivo.')
-  } finally {
-    fileSubmitting.value = false
-  }
-}
+const sections = sectionState?.data ?? ref([])
+const lessons = lessonListState?.data ?? ref([])
+const curriculumPending = computed(() => Boolean(sectionState?.pending.value || lessonListState?.pending.value))
+const curriculumError = computed(() => Boolean(sectionState?.error.value || lessonListState?.error.value))
+const orderedLessons = computed(() => orderedCourseLessons(sections.value, lessons.value))
+const currentIndex = computed(() => orderedLessons.value.findIndex(item => item.id === lessonId))
+const previousLesson = computed(() => currentIndex.value > 0 ? orderedLessons.value[currentIndex.value - 1] : undefined)
+const nextLesson = computed(() => currentIndex.value >= 0 ? orderedLessons.value[currentIndex.value + 1] : undefined)
 </script>
 
 <template>
-  <main class="page lesson-page">
-    <PageHeader eyebrow="Aula" :title="lesson?.title || 'Aula'">
-      <NuxtLink class="button" :to="`/courses/${slug}`">Voltar ao curso</NuxtLink>
-    </PageHeader>
+  <main class="lesson-workspace">
+    <p v-if="coursePending || lessonPending" class="lesson-status muted">Carregando aula...</p>
 
-    <p v-if="coursePending || lessonPending" class="muted">Carregando aula...</p>
-
-    <section v-else-if="courseError || lessonError || !course || !lesson" class="empty-state">
+    <section v-else-if="courseError || lessonError || !course || !lesson" class="empty-state lesson-status">
       <h2>Aula não encontrada</h2>
       <p>Verifique se esta aula pertence ao curso informado.</p>
       <NuxtLink class="button" :to="`/courses/${slug}`">Voltar ao curso</NuxtLink>
     </section>
 
     <template v-else>
-      <nav v-if="lesson.sectionPath.length" class="lesson-context" aria-label="Localização da aula">
-        <span>{{ course.name }}</span>
-        <template v-for="section in lesson.sectionPath" :key="section.id">
-          <span aria-hidden="true">/</span>
-          <span>{{ section.title }}</span>
-        </template>
-      </nav>
-
-      <video class="lesson-player" controls preload="metadata" :src="lesson.videoUrl">
-        Seu navegador não suporta reprodução de vídeo.
-      </video>
-
-      <section v-if="lesson.description" class="lesson-description">
-        <h2>Sobre esta aula</h2>
-        <p>{{ lesson.description }}</p>
-      </section>
-
-      <LessonResources :groups="lesson.resourceGroups" />
-
-      <section class="lesson-resource-form">
-        <h2>Adicionar link</h2>
-        <ResourceLinkForm
-          :targets="resourceTargets"
-          :submitting="resourceSubmitting"
-          :error-message="resourceErrorMessage"
-          :success-message="resourceSuccessMessage"
-          @submit="submitResourceLink"
+      <aside class="lesson-sidebar">
+        <div class="lesson-sidebar-header">
+          <NuxtLink class="lesson-course-link" :to="`/courses/${course.slug}`">
+            <span aria-hidden="true">←</span>
+            <span>{{ course.name }}</span>
+          </NuxtLink>
+          <span class="lesson-count">{{ lessons.length }} aulas</span>
+        </div>
+        <p v-if="curriculumPending" class="muted curriculum-state">Carregando conteúdo...</p>
+        <p v-else-if="curriculumError" class="form-error curriculum-state">Não foi possível carregar o conteúdo.</p>
+        <CourseCurriculum
+          v-else
+          :sections="sections"
+          :lessons="lessons"
+          :course-slug="course.slug"
+          :active-lesson-id="lesson.id"
         />
-      </section>
+      </aside>
 
-      <section class="lesson-resource-form">
-        <h2>Adicionar PDF ou áudio</h2>
-        <ResourceFileForm
-          :targets="resourceTargets"
-          :submitting="fileSubmitting"
-          :error-message="fileErrorMessage"
-          :success-message="fileSuccessMessage"
-          @submit="submitResourceFile"
-        />
-      </section>
+      <article class="lesson-content">
+        <div class="lesson-content-inner">
+          <nav class="lesson-context" aria-label="Localização da aula">
+            <NuxtLink :to="`/courses/${course.slug}`">{{ course.name }}</NuxtLink>
+            <template v-for="section in lesson.sectionPath" :key="section.id">
+              <span aria-hidden="true">/</span>
+              <span>{{ section.title }}</span>
+            </template>
+          </nav>
+
+          <div class="lesson-title-row">
+            <div>
+              <p class="eyebrow">Aula</p>
+              <h1>{{ lesson.title }}</h1>
+            </div>
+            <NuxtLink class="button lesson-manage-link" :to="`/courses/${course.slug}/manage`">Gerenciar</NuxtLink>
+          </div>
+
+          <details class="mobile-curriculum">
+            <summary>
+              <span>Conteúdo do curso</span>
+              <span>{{ lessons.length }} aulas</span>
+            </summary>
+            <CourseCurriculum
+              :sections="sections"
+              :lessons="lessons"
+              :course-slug="course.slug"
+              :active-lesson-id="lesson.id"
+            />
+          </details>
+
+          <video class="lesson-player" controls preload="metadata" :src="lesson.videoUrl">
+            Seu navegador não suporta reprodução de vídeo.
+          </video>
+
+          <nav class="lesson-pagination" aria-label="Navegação entre aulas">
+            <NuxtLink
+              v-if="previousLesson"
+              class="lesson-pagination-link previous"
+              :to="`/courses/${course.slug}/lessons/${previousLesson.id}`"
+            >
+              <small>← Aula anterior</small>
+              <strong>{{ previousLesson.title }}</strong>
+            </NuxtLink>
+            <span v-else />
+            <NuxtLink
+              v-if="nextLesson"
+              class="lesson-pagination-link next"
+              :to="`/courses/${course.slug}/lessons/${nextLesson.id}`"
+            >
+              <small>Próxima aula →</small>
+              <strong>{{ nextLesson.title }}</strong>
+            </NuxtLink>
+          </nav>
+
+          <section v-if="lesson.description" class="lesson-description">
+            <h2>Sobre esta aula</h2>
+            <p>{{ lesson.description }}</p>
+          </section>
+
+          <LessonResources :groups="lesson.resourceGroups" />
+        </div>
+      </article>
     </template>
   </main>
 </template>

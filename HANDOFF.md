@@ -12,6 +12,9 @@ Fluxos já disponíveis na aplicação real:
 - vínculo opcional da aula com uma seção do mesmo curso;
 - listagem das aulas dentro das seções ou diretamente no curso;
 - página dedicada da aula com contexto da hierarquia de seções;
+- currículo recolhível reutilizado na visão do curso e na página da aula;
+- navegação direta entre aulas com índice lateral no desktop, índice expansível no mobile e ações anterior/próxima;
+- separação entre o fluxo de estudo e a rota `/courses/{slug}/manage` para ações administrativas;
 - reprodução dos vídeos pelo player HTML5 sem carregar players na árvore do curso;
 - cadastro de links vinculados ao curso, a uma seção ou a uma aula;
 - upload de PDFs e áudios vinculados aos mesmos escopos;
