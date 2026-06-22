@@ -54,6 +54,11 @@ enum class ReasonEnum(
         2004,
         "Lesson was not found.",
     ),
+    LESSON_DOWNLOAD_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        2005,
+        "Lesson download job was not found.",
+    ),
     MALFORMED_REQUEST(
         HttpStatus.BAD_REQUEST,
         9001,

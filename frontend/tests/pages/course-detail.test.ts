@@ -62,6 +62,15 @@ describe('course detail page', () => {
               error: ref(null),
               refresh: vi.fn()
             })
+          },
+          lessonDownloadsApi: {
+            createDownload: vi.fn(),
+            listDownloads: vi.fn().mockResolvedValue({
+              data: ref([]),
+              pending: ref(false),
+              error: ref(null),
+              refresh: vi.fn()
+            })
           }
         }
       }
@@ -121,6 +130,15 @@ describe('course detail page', () => {
                 createdAt: '2026-06-14T13:36:55Z',
                 updatedAt: '2026-06-14T13:36:55Z'
               }]),
+              pending: ref(false),
+              error: ref(null),
+              refresh: vi.fn()
+            })
+          },
+          lessonDownloadsApi: {
+            createDownload: vi.fn(),
+            listDownloads: vi.fn().mockResolvedValue({
+              data: ref([]),
               pending: ref(false),
               error: ref(null),
               refresh: vi.fn()

@@ -17,7 +17,8 @@ Fluxos já disponíveis na aplicação real:
 - upload de PDFs e áudios vinculados aos mesmos escopos;
 - agrupamento dos recursos no detalhe da aula por aula, seção atual, seções ancestrais e curso;
 - download de PDFs e reprodução de áudio no player HTML5;
-- armazenamento dos vídeos em `courses/<slug>/lessons/<uuid>.mp4` dentro do diretório configurado de assets.
+- download assíncrono de aulas por URL com `yt-dlp`, progresso e histórico de falhas;
+- armazenamento dos vídeos em `courses/<slug>/lessons/` dentro do diretório configurado de assets.
 
 Endpoints de aulas da aplicação real:
 
@@ -27,6 +28,9 @@ GET  /api/courses/{courseId}/lessons/{lessonId}
 POST /api/courses/{courseId}/lessons
 POST /api/courses/{courseId}/resources/links
 POST /api/courses/{courseId}/resources/files
+GET  /api/courses/{courseId}/lesson-downloads
+GET  /api/courses/{courseId}/lesson-downloads/{jobId}
+POST /api/courses/{courseId}/lesson-downloads
 ```
 
 O `POST` usa `multipart/form-data` com `sectionId` opcional, `title`, `description` e `video`. Somente arquivos `.mp4` com `Content-Type: video/mp4` são aceitos.
@@ -37,7 +41,9 @@ O cadastro de links usa JSON com `scope` (`COURSE`, `SECTION` ou `LESSON`), o id
 
 O cadastro de arquivos usa `multipart/form-data` com os mesmos campos de escopo, `title`, `description` e `file`. São aceitos PDF e os formatos de áudio MP3, M4A, WAV, OGG e FLAC, sempre validando extensão e MIME type. Os arquivos ficam em `courses/<slug>/resources/<uuid>.<ext>`.
 
-Próximo incremento planejado para a aplicação real: download de vídeos com `yt-dlp`.
+O download por URL cria um job assíncrono com os estados `QUEUED`, `RUNNING`, `COMPLETED` e `FAILED`. O `POST` recebe JSON com `sectionId` opcional, `title`, `description` e `url`. A aula só é criada depois que o processo termina e o arquivo MP4 é validado dentro do diretório de assets. Jobs interrompidos durante a execução são marcados como falha na próxima inicialização, enquanto jobs ainda na fila são retomados.
+
+O comando mantém as opções validadas na POC: seleção preferencial de AVC até 1080p, merge/remux para MP4, `faststart`, downloads fragmentados e `referer` específico para Vimeo ou Hotmart. O backend limita a execução a um download por vez. A imagem Docker instala `yt-dlp` e `ffmpeg`; fora do container, ambos devem estar no `PATH`. O executável pode ser alterado com `YT_DLP_EXECUTABLE`.
 
 ## POC Node.js
 

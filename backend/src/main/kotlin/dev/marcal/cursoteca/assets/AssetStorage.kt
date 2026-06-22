@@ -41,6 +41,14 @@ class AssetStorage(
         Files.deleteIfExists(resolveInsideRoot(relativePath))
     }
 
+    fun resolve(relativePath: Path): Path = resolveInsideRoot(relativePath)
+
+    fun relativePath(absolutePath: Path): String {
+        val normalized = absolutePath.toAbsolutePath().normalize()
+        if (!normalized.startsWith(root)) throw invalidAssetPath()
+        return root.relativize(normalized).toString()
+    }
+
     private fun resolveInsideRoot(relativePath: Path): Path {
         if (relativePath.isAbsolute) {
             throw invalidAssetPath()

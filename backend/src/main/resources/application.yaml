@@ -14,3 +14,4 @@ spring:
 
 cursoteca:
   assets-dir: ${CURSOTECA_ASSETS_DIR:assets}
+  yt-dlp-executable: ${YT_DLP_EXECUTABLE:yt-dlp}

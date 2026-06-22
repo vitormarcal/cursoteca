@@ -24,7 +24,7 @@ abstract class BaseIntegrationTest {
 
     @BeforeEach
     fun resetIntegrationState() {
-        jdbcTemplate.execute("truncate table resources, lessons, course_sections, courses restart identity cascade")
+        jdbcTemplate.execute("truncate table lesson_download_jobs, resources, lessons, course_sections, courses restart identity cascade")
         resetAssetsDirectory()
     }
 
@@ -56,6 +56,7 @@ abstract class BaseIntegrationTest {
             registry.add("spring.datasource.username", postgres::getUsername)
             registry.add("spring.datasource.password", postgres::getPassword)
             registry.add("cursoteca.assets-dir") { assetsDir.toString() }
+            registry.add("cursoteca.yt-dlp-executable") { "/bin/false" }
         }
     }
 }

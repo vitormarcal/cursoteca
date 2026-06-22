@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CreateCourseSectionInput } from '~/types/course-section'
 import type { CreateLessonInput } from '~/types/lesson'
+import type { CreateLessonDownloadInput } from '~/types/lesson-download'
 import type { CreateResourceFileInput, CreateResourceLinkInput, ResourceTarget } from '~/types/resource'
 
 const route = useRoute()
@@ -8,6 +9,7 @@ const slug = String(route.params.slug)
 const { getCourseBySlug } = useCourses()
 const { listSections, createSection } = useCourseSections()
 const { listLessons, createLesson } = useLessons()
+const { listDownloads, createDownload } = useLessonDownloads()
 const { createFile, createLink } = useResources()
 
 const {
@@ -31,10 +33,17 @@ const lessons = lessonState?.data ?? ref([])
 const lessonsPending = lessonState?.pending ?? ref(false)
 const lessonsError = lessonState?.error ?? ref(null)
 const refreshLessons = lessonState?.refresh ?? (() => Promise.resolve())
+const downloadState = course.value
+  ? await listDownloads(course.value.id)
+  : null
+const downloads = downloadState?.data ?? ref([])
+const refreshDownloads = downloadState?.refresh ?? (() => Promise.resolve())
 const submitting = ref(false)
 const errorMessage = ref('')
 const lessonSubmitting = ref(false)
 const lessonErrorMessage = ref('')
+const downloadSubmitting = ref(false)
+const downloadErrorMessage = ref('')
 const resourceSubmitting = ref(false)
 const resourceErrorMessage = ref('')
 const resourceSuccessMessage = ref('')
@@ -43,6 +52,17 @@ const fileErrorMessage = ref('')
 const fileSuccessMessage = ref('')
 
 const courseLessons = computed(() => lessons.value.filter(lesson => lesson.sectionId === null))
+const hasActiveDownloads = computed(() => downloads.value.some(job => job.status === 'QUEUED' || job.status === 'RUNNING'))
+
+let downloadPolling: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  downloadPolling = setInterval(async () => {
+    if (!hasActiveDownloads.value) return
+    await refreshDownloads()
+    await refreshLessons()
+  }, 2000)
+})
+onBeforeUnmount(() => downloadPolling && clearInterval(downloadPolling))
 const resourceTargets = computed<ResourceTarget[]>(() => {
   if (!course.value) return []
   const targets: ResourceTarget[] = [{ scope: 'COURSE', label: 'Curso' }]
@@ -89,6 +109,20 @@ async function submitLesson(input: CreateLessonInput) {
     lessonErrorMessage.value = apiErrorMessage(error, 'Não foi possível cadastrar a aula.')
   } finally {
     lessonSubmitting.value = false
+  }
+}
+
+async function submitDownload(input: CreateLessonDownloadInput) {
+  if (!course.value) return
+  downloadErrorMessage.value = ''
+  downloadSubmitting.value = true
+  try {
+    await createDownload(course.value.id, input)
+    await refreshDownloads()
+  } catch (error) {
+    downloadErrorMessage.value = apiErrorMessage(error, 'Não foi possível iniciar o download.')
+  } finally {
+    downloadSubmitting.value = false
   }
 }
 
@@ -170,9 +204,24 @@ async function submitResourceFile(input: CreateResourceFileInput) {
               :course-slug="course.slug"
             />
           </template>
+
+          <section v-if="downloads.length" class="download-section">
+            <h2>Downloads</h2>
+            <LessonDownloadList :jobs="downloads" />
+          </section>
         </div>
 
         <aside class="content-actions">
+          <section>
+            <h2>Baixar aula por URL</h2>
+            <LessonDownloadForm
+              :sections="sections"
+              :submitting="downloadSubmitting"
+              :error-message="downloadErrorMessage"
+              @submit="submitDownload"
+            />
+          </section>
+
           <section>
             <h2>Nova aula</h2>
             <LessonForm

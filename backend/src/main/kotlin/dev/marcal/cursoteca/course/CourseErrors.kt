@@ -58,3 +58,10 @@ class InvalidResourceInputException(
         reason = ReasonEnum.INVALID_RESOURCE_INPUT,
         details = details,
     )
+
+class LessonDownloadNotFoundException(
+    jobId: Long,
+) : BusinessException(
+        reason = ReasonEnum.LESSON_DOWNLOAD_NOT_FOUND,
+        details = mapOf("jobId" to jobId.toString()),
+    )

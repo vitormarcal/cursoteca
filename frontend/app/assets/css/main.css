@@ -274,6 +274,38 @@ h2 {
   gap: 24px;
 }
 
+.download-section {
+  margin-top: 28px;
+}
+
+.download-list {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.download-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #dce3e7;
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #ffffff;
+}
+
+.download-item p {
+  margin: 4px 0 0;
+  color: #62707a;
+}
+
+.download-item progress {
+  width: min(180px, 35%);
+}
+
 .unsectioned-lessons {
   margin-top: 16px;
 }
