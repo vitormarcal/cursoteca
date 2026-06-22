@@ -16,3 +16,8 @@ export type CreateCourseSectionInput = {
   title: string
   description: string
 }
+
+export type UpdateCourseSectionInput = {
+  title: string
+  description: string
+}

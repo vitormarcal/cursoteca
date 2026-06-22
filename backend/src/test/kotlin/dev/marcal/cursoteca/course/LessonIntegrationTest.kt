@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import java.nio.file.Files
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -186,6 +187,38 @@ class LessonIntegrationTest : BaseIntegrationTest() {
                 status { isOk() }
                 jsonPath("$[0].id") { value(firstCourseId) }
                 jsonPath("$[0].continueLessonId") { value(firstLesson) }
+            }
+    }
+
+    @Test
+    fun `edits moves and reorders lessons`() {
+        val courseId = createCourse("Editable Lesson Course")
+        val sectionId = createSection(courseId, "Module")
+        val firstId = responseId(uploadLesson(courseId, "First", null).andReturn().response.contentAsString)
+        val secondId = responseId(uploadLesson(courseId, "Second", null).andReturn().response.contentAsString)
+        val thirdId = responseId(uploadLesson(courseId, "Third", null).andReturn().response.contentAsString)
+
+        mockMvc
+            .put("/api/courses/$courseId/lessons/order") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"lessonIds":[$thirdId,$firstId,$secondId]}"""
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$[0].id") { value(thirdId) }
+                jsonPath("$[1].id") { value(firstId) }
+                jsonPath("$[2].id") { value(secondId) }
+            }
+
+        mockMvc
+            .patch("/api/courses/$courseId/lessons/$firstId") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"sectionId":$sectionId,"title":"Updated first","description":"Moved lesson"}"""
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.sectionId") { value(sectionId) }
+                jsonPath("$.title") { value("Updated first") }
+                jsonPath("$.description") { value("Moved lesson") }
+                jsonPath("$.position") { value(1) }
             }
     }
 

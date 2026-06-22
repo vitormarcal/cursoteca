@@ -62,6 +62,56 @@ class CourseSectionService(
         )
     }
 
+    @Transactional
+    fun updateSection(
+        courseId: Long,
+        sectionId: Long,
+        command: UpdateCourseSectionCommand,
+    ): CourseSection {
+        if (!courseRepository.existsById(courseId)) throw CourseNotFoundException(courseId)
+        val section =
+            sectionRepository.findByIdOrNull(sectionId)?.takeIf { it.course.id == courseId }
+                ?: throw CourseSectionNotFoundException(sectionId)
+        section.title = command.title
+        section.description = command.description
+        return section
+    }
+
+    @Transactional
+    fun reorder(
+        courseId: Long,
+        parentId: Long?,
+        sectionIds: List<Long>,
+    ): List<CourseSectionResponse> {
+        if (!courseRepository.existsById(courseId)) throw CourseNotFoundException(courseId)
+        if (parentId != null) {
+            sectionRepository.findByIdOrNull(parentId)?.takeIf { it.course.id == courseId }
+                ?: throw CourseSectionParentNotFoundException(parentId)
+        }
+        val siblings =
+            if (parentId == null) {
+                sectionRepository.findAllByCourseIdAndParentIsNullOrderByPositionAscIdAsc(courseId)
+            } else {
+                sectionRepository.findAllByCourseIdAndParentIdOrderByPositionAscIdAsc(courseId, parentId)
+            }
+        validateSectionOrder(siblings, sectionIds)
+        val sectionsById = siblings.associateBy { requireNotNull(it.id) }
+        sectionIds.forEachIndexed { index, id -> sectionsById.getValue(id).position = index + 1 }
+        return listTree(courseId)
+    }
+
+    private fun validateSectionOrder(
+        siblings: List<CourseSection>,
+        sectionIds: List<Long>,
+    ) {
+        val expected = siblings.map { requireNotNull(it.id) }.toSet()
+        if (sectionIds.size != siblings.size || sectionIds.toSet() != expected) {
+            throw InvalidCourseSectionInputException(
+                mapOf("sectionIds" to "sectionIds must contain every sibling section exactly once"),
+            )
+        }
+    }
+
     private fun uniqueSlug(
         courseId: Long,
         parentId: Long?,

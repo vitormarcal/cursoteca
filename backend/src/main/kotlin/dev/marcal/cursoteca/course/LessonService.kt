@@ -62,6 +62,61 @@ class LessonService(
         return lesson
     }
 
+    @Transactional
+    fun updateLesson(
+        courseId: Long,
+        lessonId: Long,
+        command: UpdateLessonCommand,
+    ): Lesson {
+        if (!courseRepository.existsById(courseId)) throw CourseNotFoundException(courseId)
+        val lesson = lessonRepository.findByIdAndCourseId(lessonId, courseId) ?: throw LessonNotFoundException(lessonId)
+        val section =
+            command.sectionId?.let { sectionId ->
+                sectionRepository.findByIdOrNull(sectionId)?.takeIf { it.course.id == courseId }
+                    ?: throw CourseSectionNotFoundException(sectionId)
+            }
+        if (lesson.section?.id != section?.id) {
+            lesson.position =
+                if (section == null) {
+                    lessonRepository.maxCoursePosition(courseId) + 1
+                } else {
+                    lessonRepository.maxSectionPosition(courseId, requireNotNull(section.id)) + 1
+                }
+            lesson.section = section
+        }
+        lesson.title = command.title
+        lesson.description = command.description
+        return lesson
+    }
+
+    @Transactional
+    fun reorder(
+        courseId: Long,
+        sectionId: Long?,
+        lessonIds: List<Long>,
+    ): List<Lesson> {
+        if (!courseRepository.existsById(courseId)) throw CourseNotFoundException(courseId)
+        if (sectionId != null) {
+            sectionRepository.findByIdOrNull(sectionId)?.takeIf { it.course.id == courseId }
+                ?: throw CourseSectionNotFoundException(sectionId)
+        }
+        val siblings =
+            if (sectionId == null) {
+                lessonRepository.findAllByCourseIdAndSectionIsNullOrderByPositionAscIdAsc(courseId)
+            } else {
+                lessonRepository.findAllByCourseIdAndSectionIdOrderByPositionAscIdAsc(courseId, sectionId)
+            }
+        val expected = siblings.map { requireNotNull(it.id) }.toSet()
+        if (lessonIds.size != siblings.size || lessonIds.toSet() != expected) {
+            throw InvalidLessonInputException(
+                mapOf("lessonIds" to "lessonIds must contain every lesson in the section exactly once"),
+            )
+        }
+        val lessonsById = siblings.associateBy { requireNotNull(it.id) }
+        lessonIds.forEachIndexed { index, id -> lessonsById.getValue(id).position = index + 1 }
+        return lessonIds.map(lessonsById::getValue)
+    }
+
     private fun resourceGroups(lesson: Lesson): LessonResourceGroupsResponse {
         val lessonResources =
             resourceRepository.findAllByLessonIdOrderByPositionAscIdAsc(requireNotNull(lesson.id)).map { it.toResponse() }

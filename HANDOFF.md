@@ -16,6 +16,7 @@ Fluxos já disponíveis na aplicação real:
 - navegação direta entre aulas com índice lateral no desktop, índice expansível no mobile e ações anterior/próxima;
 - separação entre o fluxo de estudo e a rota `/courses/{slug}/manage` para ações administrativas;
 - retomada pela última aula acessada, ordenação da biblioteca por atividade recente e conclusão manual de aulas;
+- edição de títulos/descrições, movimentação de aulas entre seções e reordenação de aulas e seções no gerenciamento;
 - reprodução dos vídeos pelo player HTML5 sem carregar players na árvore do curso;
 - cadastro de links vinculados ao curso, a uma seção ou a uma aula;
 - upload de PDFs e áudios vinculados aos mesmos escopos;
@@ -32,6 +33,10 @@ GET  /api/courses/{courseId}/lessons/{lessonId}
 POST /api/courses/{courseId}/lessons
 POST /api/courses/{courseId}/lessons/{lessonId}/access
 PATCH /api/courses/{courseId}/lessons/{lessonId}/completion
+PATCH /api/courses/{courseId}/lessons/{lessonId}
+PUT   /api/courses/{courseId}/lessons/order
+PATCH /api/courses/{courseId}/sections/{sectionId}
+PUT   /api/courses/{courseId}/sections/order
 POST /api/courses/{courseId}/resources/links
 POST /api/courses/{courseId}/resources/files
 GET  /api/courses/{courseId}/lesson-downloads

@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -35,6 +36,19 @@ class LessonController(
         @PathVariable courseId: Long,
         @PathVariable lessonId: Long,
     ): LessonResponse = service.recordAccess(courseId, lessonId).toResponse()
+
+    @PatchMapping("/{lessonId}")
+    fun update(
+        @PathVariable courseId: Long,
+        @PathVariable lessonId: Long,
+        @RequestBody request: UpdateLessonRequest,
+    ): LessonResponse = service.updateLesson(courseId, lessonId, UpdateLessonCommand.from(request)).toResponse()
+
+    @PutMapping("/order")
+    fun reorder(
+        @PathVariable courseId: Long,
+        @RequestBody request: ReorderLessonsRequest,
+    ): List<LessonResponse> = service.reorder(courseId, request.sectionId, request.lessonIds).map { it.toResponse() }
 
     @PatchMapping("/{lessonId}/completion")
     fun setCompletion(

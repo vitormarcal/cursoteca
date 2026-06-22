@@ -40,3 +40,9 @@ export type CreateLessonInput = {
   description: string
   video: File
 }
+
+export type UpdateLessonInput = {
+  sectionId: number | null
+  title: string
+  description: string
+}

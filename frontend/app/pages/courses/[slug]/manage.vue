@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { CreateCourseSectionInput } from '~/types/course-section'
-import type { CreateLessonInput } from '~/types/lesson'
+import type { CreateCourseSectionInput, UpdateCourseSectionInput } from '~/types/course-section'
+import type { CreateLessonInput, UpdateLessonInput } from '~/types/lesson'
 import type { CreateLessonDownloadInput } from '~/types/lesson-download'
 import type { CreateResourceFileInput, CreateResourceLinkInput, ResourceTarget } from '~/types/resource'
 
 const route = useRoute()
 const slug = String(route.params.slug)
 const { getCourseBySlug } = useCourses()
-const { listSections, createSection } = useCourseSections()
-const { listLessons, createLesson } = useLessons()
+const { listSections, createSection, reorderSections, updateSection } = useCourseSections()
+const { listLessons, createLesson, reorderLessons, updateLesson } = useLessons()
 const { listDownloads, createDownload } = useLessonDownloads()
 const { createFile, createLink } = useResources()
 
@@ -35,6 +35,8 @@ const linkSuccess = ref('')
 const fileSubmitting = ref(false)
 const fileError = ref('')
 const fileSuccess = ref('')
+const contentSubmitting = ref(false)
+const contentError = ref('')
 
 const hasActiveDownloads = computed(() => downloads.value.some(job => job.status === 'QUEUED' || job.status === 'RUNNING'))
 const resourceTargets = computed<ResourceTarget[]>(() => {
@@ -134,6 +136,42 @@ async function submitFile(input: CreateResourceFileInput) {
     fileSubmitting.value = false
   }
 }
+
+async function manageContent(action: () => Promise<unknown>, refresh: () => Promise<unknown>) {
+  contentError.value = ''
+  contentSubmitting.value = true
+  try {
+    await action()
+    await refresh()
+  } catch (error) {
+    contentError.value = apiErrorMessage(error, 'Não foi possível atualizar o conteúdo.')
+  } finally {
+    contentSubmitting.value = false
+  }
+}
+
+function editSection(sectionId: number, input: UpdateCourseSectionInput) {
+  if (!course.value) return
+  return manageContent(() => updateSection(course.value!.id, sectionId, input), refreshSections)
+}
+
+function orderSections(parentId: number | null, sectionIds: number[]) {
+  if (!course.value) return
+  return manageContent(() => reorderSections(course.value!.id, parentId, sectionIds), refreshSections)
+}
+
+function editLesson(lessonId: number, input: UpdateLessonInput) {
+  if (!course.value) return
+  return manageContent(() => updateLesson(course.value!.id, lessonId, input), async () => {
+    await refreshLessons()
+    await refreshSections()
+  })
+}
+
+function orderLessons(sectionId: number | null, lessonIds: number[]) {
+  if (!course.value) return
+  return manageContent(() => reorderLessons(course.value!.id, sectionId, lessonIds), refreshLessons)
+}
 </script>
 
 <template>
@@ -149,6 +187,17 @@ async function submitFile(input: CreateResourceFileInput) {
     </section>
 
     <template v-else>
+      <CourseContentManager
+        :sections="sections"
+        :lessons="lessons"
+        :submitting="contentSubmitting"
+        :error-message="contentError"
+        @update-section="editSection"
+        @update-lesson="editLesson"
+        @reorder-sections="orderSections"
+        @reorder-lessons="orderLessons"
+      />
+
       <section v-if="downloads.length" class="management-status">
         <div class="section-heading">
           <h2>Downloads</h2>

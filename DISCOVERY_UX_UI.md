@@ -155,10 +155,12 @@ Critérios de aceite:
 ### Fase 3 — escala e refinamento
 
 - Busca por curso e por aula.
-- Reordenação e edição no modo gerencial.
+- Reordenação e edição no modo gerencial. **Implementado.**
 - Duração de vídeos e estimativa por seção.
 - Filtros de concluídas/pendentes.
 - Atalhos de teclado e preferências de player.
+
+O gerenciamento permite editar títulos e descrições, mover aulas entre seções e reordenar irmãos com ações de subir/descer. Controles explícitos foram escolhidos na primeira versão por funcionarem com teclado e toque sem depender de drag-and-drop.
 
 ## Critérios de aceite da Fase 1
 

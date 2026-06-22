@@ -9,6 +9,13 @@ import org.springframework.stereotype.Repository
 interface CourseSectionRepository : JpaRepository<CourseSection, Long> {
     fun findAllByCourseIdOrderByParentIdAscPositionAscIdAsc(courseId: Long): List<CourseSection>
 
+    fun findAllByCourseIdAndParentIsNullOrderByPositionAscIdAsc(courseId: Long): List<CourseSection>
+
+    fun findAllByCourseIdAndParentIdOrderByPositionAscIdAsc(
+        courseId: Long,
+        parentId: Long,
+    ): List<CourseSection>
+
     fun existsByCourseIdAndParentIsNullAndSlug(
         courseId: Long,
         slug: String,

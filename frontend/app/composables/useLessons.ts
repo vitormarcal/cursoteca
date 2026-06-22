@@ -1,4 +1,4 @@
-import type { CreateLessonInput, Lesson, LessonDetail } from '~/types/lesson'
+import type { CreateLessonInput, Lesson, LessonDetail, UpdateLessonInput } from '~/types/lesson'
 import { hasInjectionContext, inject } from 'vue'
 
 export type LessonsApi = {
@@ -7,6 +7,8 @@ export type LessonsApi = {
   listLessons: (courseId: number) => ReturnType<typeof useFetch<Lesson[]>>
   recordLessonAccess: (courseId: number, lessonId: number) => Promise<Lesson>
   setLessonCompleted: (courseId: number, lessonId: number, completed: boolean) => Promise<Lesson>
+  reorderLessons: (courseId: number, sectionId: number | null, lessonIds: number[]) => Promise<Lesson[]>
+  updateLesson: (courseId: number, lessonId: number, input: UpdateLessonInput) => Promise<Lesson>
 }
 
 export function useLessons(): LessonsApi {
@@ -61,11 +63,33 @@ export function useLessons(): LessonsApi {
     })
   }
 
+  function updateLesson(courseId: number, lessonId: number, input: UpdateLessonInput) {
+    return $fetch<Lesson>(`/api/courses/${courseId}/lessons/${lessonId}`, {
+      baseURL: backendBaseUrl(),
+      method: 'PATCH',
+      body: {
+        sectionId: input.sectionId,
+        title: input.title.trim(),
+        description: input.description.trim()
+      }
+    })
+  }
+
+  function reorderLessons(courseId: number, sectionId: number | null, lessonIds: number[]) {
+    return $fetch<Lesson[]>(`/api/courses/${courseId}/lessons/order`, {
+      baseURL: backendBaseUrl(),
+      method: 'PUT',
+      body: { sectionId, lessonIds }
+    })
+  }
+
   return {
     createLesson,
     getLesson,
     listLessons,
     recordLessonAccess,
-    setLessonCompleted
+    reorderLessons,
+    setLessonCompleted,
+    updateLesson
   }
 }

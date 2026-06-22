@@ -21,7 +21,7 @@ class Lesson(
     val course: Course,
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id")
-    val section: CourseSection?,
+    var section: CourseSection?,
     @Column(nullable = false, length = 180)
     var title: String,
     @Column(nullable = false, columnDefinition = "text")

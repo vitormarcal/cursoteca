@@ -6,7 +6,9 @@ import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
+import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 
 class CourseSectionIntegrationTest : BaseIntegrationTest() {
     @Test
@@ -123,6 +125,37 @@ class CourseSectionIntegrationTest : BaseIntegrationTest() {
             }
     }
 
+    @Test
+    fun `edits and reorders sibling sections`() {
+        val courseId = createCourse("Editable Section Course")
+        createSection(courseId, "First")
+        createSection(courseId, "Second")
+        val firstId = sectionId(courseId, "First")
+        val secondId = sectionId(courseId, "Second")
+
+        mockMvc
+            .patch("/api/courses/$courseId/sections/$firstId") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"title":"Updated first","description":"Updated description"}"""
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.title") { value("Updated first") }
+                jsonPath("$.description") { value("Updated description") }
+            }
+
+        mockMvc
+            .put("/api/courses/$courseId/sections/order") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"sectionIds":[$secondId,$firstId]}"""
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$[0].id") { value(secondId) }
+                jsonPath("$[0].position") { value(1) }
+                jsonPath("$[1].id") { value(firstId) }
+                jsonPath("$[1].position") { value(2) }
+            }
+    }
+
     private fun createCourse(name: String): Int {
         val image =
             MockMultipartFile(
@@ -168,5 +201,16 @@ class CourseSectionIntegrationTest : BaseIntegrationTest() {
             ?.get(1)
             ?.toInt()
             ?: error("Section id not found in response: ${result.response.contentAsString}")
+    }
+
+    private fun createSection(
+        courseId: Int,
+        title: String,
+    ) {
+        mockMvc
+            .post("/api/courses/$courseId/sections") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"title":"$title","description":""}"""
+            }.andExpect { status { isCreated() } }
     }
 }
