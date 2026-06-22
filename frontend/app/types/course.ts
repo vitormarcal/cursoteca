@@ -4,6 +4,8 @@ export type Course = {
   slug: string
   description: string
   imageUrl: string
+  continueLessonId: number | null
+  lastAccessedAt: string | null
   createdAt: string
   updatedAt: string
 }

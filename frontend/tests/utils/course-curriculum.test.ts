@@ -37,6 +37,9 @@ function lesson(id: number, sectionId: number | null, position: number): Lesson 
     description: '',
     videoUrl: `/${id}.mp4`,
     position,
+    completed: false,
+    completedAt: null,
+    lastAccessedAt: null,
     createdAt: timestamp,
     updatedAt: timestamp
   }

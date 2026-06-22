@@ -5,6 +5,8 @@ export type LessonsApi = {
   createLesson: (courseId: number, input: CreateLessonInput) => Promise<Lesson>
   getLesson: (courseId: number, lessonId: number) => ReturnType<typeof useFetch<LessonDetail>>
   listLessons: (courseId: number) => ReturnType<typeof useFetch<Lesson[]>>
+  recordLessonAccess: (courseId: number, lessonId: number) => Promise<Lesson>
+  setLessonCompleted: (courseId: number, lessonId: number, completed: boolean) => Promise<Lesson>
 }
 
 export function useLessons(): LessonsApi {
@@ -44,9 +46,26 @@ export function useLessons(): LessonsApi {
     })
   }
 
+  function setLessonCompleted(courseId: number, lessonId: number, completed: boolean) {
+    return $fetch<Lesson>(`/api/courses/${courseId}/lessons/${lessonId}/completion`, {
+      baseURL: backendBaseUrl(),
+      method: 'PATCH',
+      body: { completed }
+    })
+  }
+
+  function recordLessonAccess(courseId: number, lessonId: number) {
+    return $fetch<Lesson>(`/api/courses/${courseId}/lessons/${lessonId}/access`, {
+      baseURL: backendBaseUrl(),
+      method: 'POST'
+    })
+  }
+
   return {
     createLesson,
     getLesson,
-    listLessons
+    listLessons,
+    recordLessonAccess,
+    setLessonCompleted
   }
 }

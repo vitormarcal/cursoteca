@@ -173,6 +173,14 @@ h2 {
   background: #ffffff;
 }
 
+.course-card-main {
+  display: block;
+}
+
+.course-card-main:hover h2 {
+  color: var(--color-primary);
+}
+
 .course-card img {
   display: block;
   width: 100%;
@@ -183,6 +191,21 @@ h2 {
 
 .course-card div {
   padding: 16px;
+}
+
+.course-card-footer {
+  display: flex;
+  min-height: 66px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.course-card-footer .button {
+  min-height: 38px;
 }
 
 .course-card p {
@@ -667,6 +690,13 @@ details[open] > .curriculum-section-summary .curriculum-chevron {
   font-size: 0.58rem;
 }
 
+.curriculum-play.is-completed {
+  background: #d9eee8;
+  color: #087065;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
 .curriculum-sections .curriculum-sections {
   display: grid;
   gap: 8px;
@@ -773,6 +803,22 @@ details[open] > .curriculum-section-summary .curriculum-chevron {
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 24px;
+}
+
+.lesson-title-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.lesson-completion-button.is-completed {
+  border-color: #7bb3a8;
+  background: #e2f1ee;
+  color: #075c55;
+}
+
+.lesson-completion-error {
+  margin: -12px 0 20px;
 }
 
 .lesson-title-row h1 {
@@ -884,7 +930,8 @@ details[open] > .curriculum-section-summary .curriculum-chevron {
 
 @media (max-width: 640px) {
   .header-actions,
-  .lesson-title-row {
+  .lesson-title-row,
+  .lesson-title-actions {
     align-items: stretch;
     flex-direction: column;
   }

@@ -6,6 +6,7 @@ import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
+import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import java.nio.file.Files
 import kotlin.test.assertEquals
@@ -61,6 +62,25 @@ class LessonIntegrationTest : BaseIntegrationTest() {
                 jsonPath("$.sectionPath[0].id") { value(sectionId) }
                 jsonPath("$.sectionPath[0].title") { value("Module 01") }
                 jsonPath("$.title") { value("First class") }
+                jsonPath("$.completed") { value(false) }
+                jsonPath("$.lastAccessedAt") { doesNotExist() }
+            }
+
+        mockMvc
+            .post("/api/courses/$courseId/lessons/$sectionLessonId/access")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.lastAccessedAt") { exists() }
+            }
+
+        mockMvc
+            .patch("/api/courses/$courseId/lessons/$sectionLessonId/completion") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"completed":true}"""
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.completed") { value(true) }
+                jsonPath("$.completedAt") { exists() }
             }
 
         mockMvc
@@ -69,6 +89,15 @@ class LessonIntegrationTest : BaseIntegrationTest() {
                 status { isOk() }
                 jsonPath("$[0].title") { value("Course introduction") }
                 jsonPath("$[1].title") { value("First class") }
+                jsonPath("$[1].completed") { value(true) }
+            }
+
+        mockMvc
+            .get("/api/courses/lesson-course")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.continueLessonId") { value(sectionLessonId) }
+                jsonPath("$.lastAccessedAt") { exists() }
             }
 
         val storedVideoCount =
@@ -140,6 +169,23 @@ class LessonIntegrationTest : BaseIntegrationTest() {
             .andExpect {
                 status { isNotFound() }
                 jsonPath("$.code") { value(2004) }
+            }
+    }
+
+    @Test
+    fun `orders library by the most recently accessed lesson`() {
+        val firstCourseId = createCourse("Older Accessed Course")
+        val firstLesson = responseId(uploadLesson(firstCourseId, "Accessed lesson", null).andReturn().response.contentAsString)
+        createCourse("Newer Unopened Course")
+
+        mockMvc.post("/api/courses/$firstCourseId/lessons/$firstLesson/access").andExpect { status { isOk() } }
+
+        mockMvc
+            .get("/api/courses")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$[0].id") { value(firstCourseId) }
+                jsonPath("$[0].continueLessonId") { value(firstLesson) }
             }
     }
 

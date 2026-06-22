@@ -3,6 +3,7 @@ package dev.marcal.cursoteca.course
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.OffsetDateTime
 
 @Service
 class LessonService(
@@ -30,6 +31,35 @@ class LessonService(
         }
         val lesson = lessonRepository.findByIdAndCourseId(lessonId, courseId) ?: throw LessonNotFoundException(lessonId)
         return lesson.toDetailResponse(resourceGroups(lesson))
+    }
+
+    @Transactional
+    fun recordAccess(
+        courseId: Long,
+        lessonId: Long,
+    ): Lesson {
+        if (!courseRepository.existsById(courseId)) {
+            throw CourseNotFoundException(courseId)
+        }
+        val lesson = lessonRepository.findByIdAndCourseId(lessonId, courseId) ?: throw LessonNotFoundException(lessonId)
+        lesson.lastAccessedAt = OffsetDateTime.now()
+        return lesson
+    }
+
+    @Transactional
+    fun setCompletion(
+        courseId: Long,
+        lessonId: Long,
+        completed: Boolean,
+    ): Lesson {
+        if (!courseRepository.existsById(courseId)) {
+            throw CourseNotFoundException(courseId)
+        }
+        val lesson = lessonRepository.findByIdAndCourseId(lessonId, courseId) ?: throw LessonNotFoundException(lessonId)
+        val now = OffsetDateTime.now()
+        lesson.completedAt = if (completed) now else null
+        lesson.lastAccessedAt = now
+        return lesson
     }
 
     private fun resourceGroups(lesson: Lesson): LessonResourceGroupsResponse {

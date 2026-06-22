@@ -16,6 +16,7 @@ const lessonsPending = lessonState?.pending ?? ref(false)
 const lessonsError = lessonState?.error ?? ref(null)
 const orderedLessons = computed(() => orderedCourseLessons(sections.value, lessons.value))
 const firstLesson = computed(() => orderedLessons.value[0])
+const entryLesson = computed(() => orderedLessons.value.find(lesson => lesson.id === course.value?.continueLessonId) ?? firstLesson.value)
 </script>
 
 <template>
@@ -45,11 +46,11 @@ const firstLesson = computed(() => orderedLessons.value[0])
             <span>{{ sections.length }} {{ sections.length === 1 ? 'seção' : 'seções principais' }}</span>
           </div>
           <NuxtLink
-            v-if="firstLesson"
+            v-if="entryLesson"
             class="button button-primary course-primary-action"
-            :to="`/courses/${course.slug}/lessons/${firstLesson.id}`"
+            :to="`/courses/${course.slug}/lessons/${entryLesson.id}`"
           >
-            Começar curso
+            {{ course.continueLessonId ? 'Continuar curso' : 'Começar curso' }}
           </NuxtLink>
         </div>
       </section>

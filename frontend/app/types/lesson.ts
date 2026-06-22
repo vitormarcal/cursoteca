@@ -8,6 +8,9 @@ export type Lesson = {
   description: string
   videoUrl: string
   position: number
+  completed: boolean
+  completedAt: string | null
+  lastAccessedAt: string | null
   createdAt: string
   updatedAt: string
 }

@@ -69,6 +69,8 @@ describe('course detail page', () => {
         slug: 'sample-course',
         description: 'Course description',
         imageUrl: '/assets/courses/sample-course/image.jpg',
+        continueLessonId: 1,
+        lastAccessedAt: '2026-06-21T14:00:00Z',
         createdAt: '2026-06-14T13:36:55Z',
         updatedAt: '2026-06-14T13:36:55Z'
       }),
@@ -113,6 +115,7 @@ describe('course detail page', () => {
     })
 
     expect(wrapper.text()).toContain('Introduction')
+    expect(wrapper.text()).toContain('Continuar curso')
     expect(wrapper.find('video').exists()).toBe(false)
     expect(wrapper.find('a[href="/courses/sample-course/lessons/1"]').exists()).toBe(true)
   })

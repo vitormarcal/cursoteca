@@ -3,8 +3,10 @@ package dev.marcal.cursoteca.course
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
@@ -28,6 +30,19 @@ class LessonController(
         @PathVariable lessonId: Long,
     ): LessonDetailResponse = service.getLesson(courseId, lessonId)
 
+    @PostMapping("/{lessonId}/access")
+    fun recordAccess(
+        @PathVariable courseId: Long,
+        @PathVariable lessonId: Long,
+    ): LessonResponse = service.recordAccess(courseId, lessonId).toResponse()
+
+    @PatchMapping("/{lessonId}/completion")
+    fun setCompletion(
+        @PathVariable courseId: Long,
+        @PathVariable lessonId: Long,
+        @RequestBody request: LessonCompletionRequest,
+    ): LessonResponse = service.setCompletion(courseId, lessonId, request.completed).toResponse()
+
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     fun create(
@@ -41,3 +56,7 @@ class LessonController(
             .createLesson(courseId, CreateLessonCommand.from(sectionId, title, description, video))
             .toResponse()
 }
+
+data class LessonCompletionRequest(
+    val completed: Boolean,
+)

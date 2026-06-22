@@ -14,6 +14,10 @@ interface LessonRepository : JpaRepository<Lesson, Long> {
         courseId: Long,
     ): Lesson?
 
+    fun findAllByLastAccessedAtIsNotNullOrderByLastAccessedAtDescIdDesc(): List<Lesson>
+
+    fun findFirstByCourseIdAndLastAccessedAtIsNotNullOrderByLastAccessedAtDescIdDesc(courseId: Long): Lesson?
+
     @Query(
         """
         select coalesce(max(lesson.position), 0)

@@ -18,12 +18,12 @@ class CourseController(
     private val service: CourseService,
 ) {
     @GetMapping
-    fun list(): List<CourseResponse> = service.listCourses().map { it.toResponse() }
+    fun list(): List<CourseResponse> = service.listCourses()
 
     @GetMapping("/{slug}")
     fun getBySlug(
         @PathVariable slug: String,
-    ): CourseResponse = service.getBySlug(slug).toResponse()
+    ): CourseResponse = service.getBySlug(slug)
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @ResponseStatus(HttpStatus.CREATED)

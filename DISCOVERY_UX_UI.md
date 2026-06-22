@@ -28,14 +28,14 @@ Este documento é um discovery heurístico baseado na interface e nos fluxos exi
 
 1. **Consumo e administração disputam a mesma tela.** A página do curso exibe conteúdo ao lado de cinco formulários: download, upload, seção, link e arquivo. A ação primária, abrir uma aula, perde hierarquia.
 2. **A aula é um destino sem continuidade.** Não há índice do curso, aula anterior/próxima nem ação de continuar. Para trocar de aula, é necessário voltar e reconstruir o contexto.
-3. **Não existe retomada ou progresso.** A aplicação não registra aula concluída, posição do vídeo ou último acesso. A biblioteca não responde “onde parei?”.
+3. **Não existe retomada ou conclusão.** A aplicação não registra aula concluída nem último acesso. A biblioteca não responde “qual foi minha última aula?”.
 
 ### Alta prioridade
 
 4. **A árvore do curso não escala bem.** Seções aninhadas são cartões dentro de cartões, sempre expandidos. Em cursos longos, isso gera muito scroll e pouca visão global.
 5. **Hierarquia visual insuficiente.** Seção, subseção e aula têm diferenças discretas; profundidade depende sobretudo de recuo e bordas.
 6. **Breadcrumb sem navegação.** O contexto da aula é texto, não permite voltar ao curso ou filtrar a seção atual.
-7. **A biblioteca informa pouco.** Cards mostram capa, título e descrição, mas não progresso, quantidade de aulas, última aula ou ação “Continuar”.
+7. **A biblioteca informa pouco.** Cards mostram capa, título e descrição, mas não última atividade ou ação “Continuar”.
 
 ### Média prioridade
 
@@ -47,7 +47,7 @@ Este documento é um discovery heurístico baseado na interface e nos fluxos exi
 
 Separar explicitamente dois modos:
 
-- **Estudar:** biblioteca, visão geral do curso, player, índice, materiais e progresso.
+- **Estudar:** biblioteca, visão geral do curso, player, índice, materiais e conclusão de aulas.
 - **Gerenciar:** criar seção/aula, baixar por URL, anexar materiais e acompanhar downloads.
 
 Rotas sugeridas:
@@ -74,7 +74,7 @@ Não é necessário implementar todas as rotas imediatamente. Um botão “Geren
 
 - Cabeçalho com “Minha biblioteca” e busca quando houver volume suficiente.
 - Card inteiro clicável, com capa consistente, título, descrição curta e metadados.
-- Quando houver progresso: barra discreta, “8 de 24 aulas” e botão contextual “Continuar”.
+- Quando houver acesso anterior: última atividade e botão contextual “Continuar”.
 - Ordenação inicial por último acesso; opção por nome ou data depois.
 
 ### Visão geral do curso
@@ -138,13 +138,19 @@ A base neutra e o verde atual podem ser mantidos, mas precisam de um sistema mai
 
 Essa fase resolve a principal dor de navegação com as APIs atuais.
 
-### Fase 2 — progresso e retomada
+### Fase 2 — conclusão e retomada
 
-1. Persistir último tempo assistido por aula.
-2. Registrar conclusão manual e/ou automática com regra explícita.
-3. Expor progresso agregado do curso.
-4. Adicionar “Continuar curso” na biblioteca e visão geral.
-5. Preservar progresso entre dispositivos se houver identidade de usuário; caso contrário, começar localmente e declarar essa limitação.
+1. Registrar a última aula acessada em cada curso.
+2. Permitir marcar e desmarcar uma aula como concluída.
+3. Adicionar “Continuar curso” na biblioteca e visão geral.
+4. Ordenar a biblioteca pelo acesso mais recente, mantendo cursos nunca acessados por data de cadastro.
+
+Critérios de aceite:
+
+- Abrir uma aula torna essa aula o destino de “Continuar curso”.
+- A ação de conclusão pode ser desfeita e aparece no currículo.
+- Cursos acessados recentemente aparecem antes dos nunca acessados.
+- Cursos nunca acessados mantêm a ordenação por data de cadastro.
 
 ### Fase 3 — escala e refinamento
 
@@ -179,4 +185,4 @@ Medir sucesso da tarefa, tempo, erros de navegação e pontos em que a pessoa he
 
 ## Decisão recomendada
 
-Implementar primeiro a Fase 1. Ela entrega ganho perceptível de UX sem exigir migração de banco. O progresso deve vir em seguida, porque “continuar de onde parei” é central para uma biblioteca de cursos, mas envolve definição de identidade, regra de conclusão e persistência.
+Após a Fase 1, implementar conclusão e retomada. “Continuar de onde parei” é central para uma biblioteca de cursos e, neste aplicativo single-user, pode ser persistido diretamente no backend.

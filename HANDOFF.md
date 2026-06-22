@@ -15,6 +15,7 @@ Fluxos já disponíveis na aplicação real:
 - currículo recolhível reutilizado na visão do curso e na página da aula;
 - navegação direta entre aulas com índice lateral no desktop, índice expansível no mobile e ações anterior/próxima;
 - separação entre o fluxo de estudo e a rota `/courses/{slug}/manage` para ações administrativas;
+- retomada pela última aula acessada, ordenação da biblioteca por atividade recente e conclusão manual de aulas;
 - reprodução dos vídeos pelo player HTML5 sem carregar players na árvore do curso;
 - cadastro de links vinculados ao curso, a uma seção ou a uma aula;
 - upload de PDFs e áudios vinculados aos mesmos escopos;
@@ -29,6 +30,8 @@ Endpoints de aulas da aplicação real:
 GET  /api/courses/{courseId}/lessons
 GET  /api/courses/{courseId}/lessons/{lessonId}
 POST /api/courses/{courseId}/lessons
+POST /api/courses/{courseId}/lessons/{lessonId}/access
+PATCH /api/courses/{courseId}/lessons/{lessonId}/completion
 POST /api/courses/{courseId}/resources/links
 POST /api/courses/{courseId}/resources/files
 GET  /api/courses/{courseId}/lesson-downloads
@@ -39,6 +42,8 @@ POST /api/courses/{courseId}/lesson-downloads
 O `POST` usa `multipart/form-data` com `sectionId` opcional, `title`, `description` e `video`. Somente arquivos `.mp4` com `Content-Type: video/mp4` são aceitos.
 
 O endpoint de detalhe valida que a aula pertence ao curso e retorna `sectionPath`, ordenado da seção raiz até a seção diretamente vinculada à aula. No frontend, a rota correspondente é `/courses/{slug}/lessons/{lessonId}`.
+
+Ao abrir o detalhe, a aula passa a ser o destino de “Continuar curso”. A conclusão é manual e reversível pelo `PATCH`, que recebe `{ "completed": true|false }`. A listagem da biblioteca prioriza cursos pela atividade mais recente; cursos nunca acessados continuam ordenados pela criação.
 
 O cadastro de links usa JSON com `scope` (`COURSE`, `SECTION` ou `LESSON`), o identificador do alvo correspondente, `title`, `description` e uma URL HTTP/HTTPS. O detalhe da aula retorna os recursos em `resourceGroups`, preservando o contexto dos materiais herdados.
 

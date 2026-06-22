@@ -62,6 +62,9 @@ describe('lesson detail page', () => {
         description: 'Introduction',
         videoUrl: '/assets/courses/sample-course/lessons/video.mp4',
         position: 1,
+        completed: false,
+        completedAt: null,
+        lastAccessedAt: '2026-06-21T13:36:55Z',
         createdAt: '2026-06-14T13:36:55Z',
         updatedAt: '2026-06-14T13:36:55Z'
       }),
@@ -122,6 +125,16 @@ describe('lesson detail page', () => {
       createdAt: '2026-06-14T13:36:55Z',
       updatedAt: '2026-06-14T13:36:55Z'
     }]
+    const setLessonCompleted = vi.fn().mockResolvedValue({
+      ...lessonList[1],
+      completed: true,
+      completedAt: '2026-06-21T14:00:00Z',
+      lastAccessedAt: '2026-06-21T14:00:00Z'
+    })
+    const recordLessonAccess = vi.fn().mockResolvedValue({
+      ...lessonList[1],
+      lastAccessedAt: '2026-06-21T13:36:55Z'
+    })
 
     const wrapper = await mountSuspended(LessonDetailPage, {
       global: {
@@ -129,6 +142,8 @@ describe('lesson detail page', () => {
           lessonsApi: {
             createLesson: vi.fn(),
             getLesson,
+            recordLessonAccess,
+            setLessonCompleted,
             listLessons: vi.fn().mockResolvedValue({
               data: ref(lessonList),
               pending: ref(false),
@@ -148,6 +163,7 @@ describe('lesson detail page', () => {
     })
 
     expect(getLesson).toHaveBeenCalledWith(42, 7)
+    expect(recordLessonAccess).toHaveBeenCalledWith(42, 7)
     expect(wrapper.text()).toContain('Lesson 01')
     expect(wrapper.text()).toContain('Stage 01')
     expect(wrapper.text()).toContain('Module 01')
@@ -157,6 +173,10 @@ describe('lesson detail page', () => {
     expect(wrapper.find('a[aria-current="page"]').text()).toContain('Lesson 01')
     expect(wrapper.find('a[href="/courses/sample-course/lessons/6"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/courses/sample-course/lessons/8"]').exists()).toBe(true)
+
+    await wrapper.find('.lesson-completion-button').trigger('click')
+    expect(setLessonCompleted).toHaveBeenCalledWith(42, 7, true)
+    expect(wrapper.find('.lesson-completion-button').text()).toContain('Aula concluída')
   })
 
   it('renders not found state when lesson lookup fails', async () => {
@@ -177,6 +197,8 @@ describe('lesson detail page', () => {
               pending: ref(false),
               error: ref(new Error('not found'))
             }),
+            recordLessonAccess: vi.fn(),
+            setLessonCompleted: vi.fn(),
             listLessons: vi.fn().mockResolvedValue({ data: ref([]), pending: ref(false), error: ref(null) })
           },
           courseSectionsApi: {

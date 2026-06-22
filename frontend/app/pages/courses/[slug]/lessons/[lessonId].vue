@@ -3,7 +3,7 @@ const route = useRoute()
 const slug = String(route.params.slug)
 const lessonId = Number(route.params.lessonId)
 const { getCourseBySlug } = useCourses()
-const { getLesson, listLessons } = useLessons()
+const { getLesson, listLessons, recordLessonAccess, setLessonCompleted } = useLessons()
 const { listSections } = useCourseSections()
 
 const { data: course, pending: coursePending, error: courseError } = await getCourseBySlug(slug)
@@ -24,6 +24,38 @@ const orderedLessons = computed(() => orderedCourseLessons(sections.value, lesso
 const currentIndex = computed(() => orderedLessons.value.findIndex(item => item.id === lessonId))
 const previousLesson = computed(() => currentIndex.value > 0 ? orderedLessons.value[currentIndex.value - 1] : undefined)
 const nextLesson = computed(() => currentIndex.value >= 0 ? orderedLessons.value[currentIndex.value + 1] : undefined)
+const completionSubmitting = ref(false)
+const completionError = ref('')
+
+onMounted(async () => {
+  if (!course.value || !lesson.value) return
+  try {
+    const accessed = await recordLessonAccess(course.value.id, lesson.value.id)
+    lesson.value.lastAccessedAt = accessed.lastAccessedAt
+    const listedLesson = lessons.value.find(item => item.id === accessed.id)
+    if (listedLesson) listedLesson.lastAccessedAt = accessed.lastAccessedAt
+  } catch {
+    // Retomada é auxiliar e não deve impedir a reprodução da aula.
+  }
+})
+
+async function toggleCompletion() {
+  if (!course.value || !lesson.value) return
+  completionError.value = ''
+  completionSubmitting.value = true
+  try {
+    const updated = await setLessonCompleted(course.value.id, lesson.value.id, !lesson.value.completed)
+    lesson.value.completed = updated.completed
+    lesson.value.completedAt = updated.completedAt
+    lesson.value.lastAccessedAt = updated.lastAccessedAt
+    const listedLesson = lessons.value.find(item => item.id === updated.id)
+    if (listedLesson) Object.assign(listedLesson, updated)
+  } catch (error) {
+    completionError.value = apiErrorMessage(error, 'Não foi possível atualizar a aula.')
+  } finally {
+    completionSubmitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -71,8 +103,20 @@ const nextLesson = computed(() => currentIndex.value >= 0 ? orderedLessons.value
               <p class="eyebrow">Aula</p>
               <h1>{{ lesson.title }}</h1>
             </div>
-            <NuxtLink class="button lesson-manage-link" :to="`/courses/${course.slug}/manage`">Gerenciar</NuxtLink>
+            <div class="lesson-title-actions">
+              <button
+                class="button lesson-completion-button"
+                :class="{ 'is-completed': lesson.completed }"
+                type="button"
+                :disabled="completionSubmitting"
+                @click="toggleCompletion"
+              >
+                {{ lesson.completed ? '✓ Aula concluída' : 'Marcar como concluída' }}
+              </button>
+              <NuxtLink class="button lesson-manage-link" :to="`/courses/${course.slug}/manage`">Gerenciar</NuxtLink>
+            </div>
           </div>
+          <p v-if="completionError" class="form-error lesson-completion-error">{{ completionError }}</p>
 
           <details class="mobile-curriculum">
             <summary>

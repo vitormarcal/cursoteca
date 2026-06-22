@@ -41,6 +41,12 @@ class Lesson(
     @Column(name = "updated_at", nullable = false)
     lateinit var updatedAt: OffsetDateTime
 
+    @Column(name = "completed_at")
+    var completedAt: OffsetDateTime? = null
+
+    @Column(name = "last_accessed_at")
+    var lastAccessedAt: OffsetDateTime? = null
+
     val videoUrl: String
         get() = "/assets/$videoPath"
 
@@ -65,6 +71,9 @@ data class LessonResponse(
     val description: String,
     val videoUrl: String,
     val position: Int,
+    val completed: Boolean,
+    val completedAt: OffsetDateTime?,
+    val lastAccessedAt: OffsetDateTime?,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
 )
@@ -85,6 +94,9 @@ data class LessonDetailResponse(
     val description: String,
     val videoUrl: String,
     val position: Int,
+    val completed: Boolean,
+    val completedAt: OffsetDateTime?,
+    val lastAccessedAt: OffsetDateTime?,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
 )
@@ -110,6 +122,9 @@ fun Lesson.toResponse() =
         description = description,
         videoUrl = videoUrl,
         position = position,
+        completed = completedAt != null,
+        completedAt = completedAt,
+        lastAccessedAt = lastAccessedAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
     )
@@ -137,6 +152,9 @@ fun Lesson.toDetailResponse(resourceGroups: LessonResourceGroupsResponse = Lesso
         description = description,
         videoUrl = videoUrl,
         position = position,
+        completed = completedAt != null,
+        completedAt = completedAt,
+        lastAccessedAt = lastAccessedAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
     )

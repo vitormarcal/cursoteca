@@ -22,7 +22,7 @@ const unsectionedLessons = computed(() => lessonsInSection(props.lessons, null))
           :to="`/courses/${courseSlug}/lessons/${lesson.id}`"
           :aria-current="lesson.id === activeLessonId ? 'page' : undefined"
         >
-          <span class="curriculum-play" aria-hidden="true">▶</span>
+          <span class="curriculum-play" :class="{ 'is-completed': lesson.completed }" aria-hidden="true">{{ lesson.completed ? '✓' : '▶' }}</span>
           <span>
             <strong>{{ lesson.title }}</strong>
             <small v-if="lesson.description">{{ lesson.description }}</small>

@@ -56,17 +56,21 @@ data class CourseResponse(
     val slug: String,
     val description: String,
     val imageUrl: String,
+    val continueLessonId: Long?,
+    val lastAccessedAt: OffsetDateTime?,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
 )
 
-fun Course.toResponse() =
+fun Course.toResponse(lastAccessedLesson: Lesson? = null) =
     CourseResponse(
         id = requireNotNull(id),
         name = name,
         slug = slug,
         description = description,
         imageUrl = imageUrl,
+        continueLessonId = lastAccessedLesson?.id,
+        lastAccessedAt = lastAccessedLesson?.lastAccessedAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
     )
