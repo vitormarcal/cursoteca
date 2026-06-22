@@ -12,6 +12,8 @@ const resource = (id: number, title: string) => ({
   title,
   description: '',
   url: `https://example.com/${id}`,
+  fileUrl: null,
+  mimeType: null,
   position: 1,
   createdAt: '2026-06-14T13:36:55Z',
   updatedAt: '2026-06-14T13:36:55Z'

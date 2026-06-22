@@ -48,6 +48,8 @@ describe('lesson detail page', () => {
             title: 'Lesson reference',
             description: 'Reference description',
             url: 'https://example.com/reference',
+            fileUrl: null,
+            mimeType: null,
             position: 1,
             createdAt: '2026-06-14T13:36:55Z',
             updatedAt: '2026-06-14T13:36:55Z'

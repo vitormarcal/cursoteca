@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { CreateResourceLinkInput } from '~/types/resource'
+import type { CreateResourceFileInput, CreateResourceLinkInput } from '~/types/resource'
 
 const route = useRoute()
 const slug = String(route.params.slug)
 const lessonId = Number(route.params.lessonId)
 const { getCourseBySlug } = useCourses()
 const { getLesson } = useLessons()
-const { createLink } = useResources()
+const { createFile, createLink } = useResources()
 
 const {
   data: course,
@@ -24,6 +24,9 @@ const refreshLesson = lessonState?.refresh ?? (() => Promise.resolve())
 const resourceSubmitting = ref(false)
 const resourceErrorMessage = ref('')
 const resourceSuccessMessage = ref('')
+const fileSubmitting = ref(false)
+const fileErrorMessage = ref('')
+const fileSuccessMessage = ref('')
 
 const resourceTargets = computed(() => {
   if (!lesson.value) return []
@@ -51,6 +54,22 @@ async function submitResourceLink(input: CreateResourceLinkInput) {
     resourceErrorMessage.value = apiErrorMessage(error, 'Não foi possível adicionar o link.')
   } finally {
     resourceSubmitting.value = false
+  }
+}
+
+async function submitResourceFile(input: CreateResourceFileInput) {
+  if (!course.value) return
+  fileErrorMessage.value = ''
+  fileSuccessMessage.value = ''
+  fileSubmitting.value = true
+  try {
+    await createFile(course.value.id, input)
+    await refreshLesson()
+    fileSuccessMessage.value = 'Arquivo adicionado.'
+  } catch (error) {
+    fileErrorMessage.value = apiErrorMessage(error, 'Não foi possível enviar o arquivo.')
+  } finally {
+    fileSubmitting.value = false
   }
 }
 </script>
@@ -97,6 +116,17 @@ async function submitResourceLink(input: CreateResourceLinkInput) {
           :error-message="resourceErrorMessage"
           :success-message="resourceSuccessMessage"
           @submit="submitResourceLink"
+        />
+      </section>
+
+      <section class="lesson-resource-form">
+        <h2>Adicionar PDF ou áudio</h2>
+        <ResourceFileForm
+          :targets="resourceTargets"
+          :submitting="fileSubmitting"
+          :error-message="fileErrorMessage"
+          :success-message="fileSuccessMessage"
+          @submit="submitResourceFile"
         />
       </section>
     </template>

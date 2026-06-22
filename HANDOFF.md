@@ -14,7 +14,9 @@ Fluxos já disponíveis na aplicação real:
 - página dedicada da aula com contexto da hierarquia de seções;
 - reprodução dos vídeos pelo player HTML5 sem carregar players na árvore do curso;
 - cadastro de links vinculados ao curso, a uma seção ou a uma aula;
-- agrupamento dos links no detalhe da aula por aula, seção atual, seções ancestrais e curso;
+- upload de PDFs e áudios vinculados aos mesmos escopos;
+- agrupamento dos recursos no detalhe da aula por aula, seção atual, seções ancestrais e curso;
+- download de PDFs e reprodução de áudio no player HTML5;
 - armazenamento dos vídeos em `courses/<slug>/lessons/<uuid>.mp4` dentro do diretório configurado de assets.
 
 Endpoints de aulas da aplicação real:
@@ -24,6 +26,7 @@ GET  /api/courses/{courseId}/lessons
 GET  /api/courses/{courseId}/lessons/{lessonId}
 POST /api/courses/{courseId}/lessons
 POST /api/courses/{courseId}/resources/links
+POST /api/courses/{courseId}/resources/files
 ```
 
 O `POST` usa `multipart/form-data` com `sectionId` opcional, `title`, `description` e `video`. Somente arquivos `.mp4` com `Content-Type: video/mp4` são aceitos.
@@ -32,7 +35,9 @@ O endpoint de detalhe valida que a aula pertence ao curso e retorna `sectionPath
 
 O cadastro de links usa JSON com `scope` (`COURSE`, `SECTION` ou `LESSON`), o identificador do alvo correspondente, `title`, `description` e uma URL HTTP/HTTPS. O detalhe da aula retorna os recursos em `resourceGroups`, preservando o contexto dos materiais herdados.
 
-Próximos incrementos planejados para a aplicação real: arquivos de aula/seção/curso (PDF e áudio) e download de vídeos com `yt-dlp`.
+O cadastro de arquivos usa `multipart/form-data` com os mesmos campos de escopo, `title`, `description` e `file`. São aceitos PDF e os formatos de áudio MP3, M4A, WAV, OGG e FLAC, sempre validando extensão e MIME type. Os arquivos ficam em `courses/<slug>/resources/<uuid>.<ext>`.
+
+Próximo incremento planejado para a aplicação real: download de vídeos com `yt-dlp`.
 
 ## POC Node.js
 

@@ -10,6 +10,8 @@ export type CourseResource = {
   title: string
   description: string
   url: string | null
+  fileUrl: string | null
+  mimeType: string | null
   position: number
   createdAt: string
   updatedAt: string
@@ -29,4 +31,13 @@ export type CreateResourceLinkInput = {
   title: string
   description: string
   url: string
+}
+
+export type CreateResourceFileInput = {
+  scope: ResourceScope
+  sectionId: number | null
+  lessonId: number | null
+  title: string
+  description: string
+  file: File
 }

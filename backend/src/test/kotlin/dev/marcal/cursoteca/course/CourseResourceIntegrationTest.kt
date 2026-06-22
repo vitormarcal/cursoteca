@@ -7,6 +7,8 @@ import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
 import org.springframework.test.web.servlet.post
+import java.nio.file.Files
+import kotlin.test.assertEquals
 
 class CourseResourceIntegrationTest : BaseIntegrationTest() {
     @Test
@@ -20,17 +22,39 @@ class CourseResourceIntegrationTest : BaseIntegrationTest() {
         createLink(courseId, "SECTION", "Stage link", sectionId = rootId)
         createLink(courseId, "SECTION", "Module link", sectionId = childId)
         createLink(courseId, "LESSON", "Lesson link", lessonId = lessonId)
+        createFile(courseId, "COURSE", "Course PDF", "material.pdf", "application/pdf")
+            .andExpect {
+                status { isCreated() }
+                jsonPath("$.type") { value("FILE") }
+                jsonPath("$.mimeType") { value("application/pdf") }
+            }
+        val audioResult =
+            createFile(courseId, "LESSON", "Lesson audio", "audio.mp3", "audio/mpeg", lessonId = lessonId)
+                .andExpect {
+                    status { isCreated() }
+                    jsonPath("$.fileUrl") { value(org.hamcrest.Matchers.endsWith(".mp3")) }
+                    jsonPath("$.mimeType") { value("audio/mpeg") }
+                }.andReturn()
 
         mockMvc
             .get("/api/courses/$courseId/lessons/$lessonId")
             .andExpect {
                 status { isOk() }
                 jsonPath("$.resourceGroups.lesson[0].title") { value("Lesson link") }
+                jsonPath("$.resourceGroups.lesson[1].title") { value("Lesson audio") }
                 jsonPath("$.resourceGroups.section[0].title") { value("Module link") }
                 jsonPath("$.resourceGroups.ancestors[0].section.title") { value("Stage 01") }
                 jsonPath("$.resourceGroups.ancestors[0].resources[0].title") { value("Stage link") }
                 jsonPath("$.resourceGroups.course[0].title") { value("Course link") }
+                jsonPath("$.resourceGroups.course[1].title") { value("Course PDF") }
             }
+
+        val audioUrl = Regex(""""fileUrl":"([^"]+)""").find(audioResult.response.contentAsString)!!.groupValues[1]
+        mockMvc.get(audioUrl).andExpect {
+            status { isOk() }
+            content { contentTypeCompatibleWith(MediaType.valueOf("audio/mpeg")) }
+        }
+        assertEquals(2L, Files.walk(assetsDir.resolve("courses/resource-course/resources")).use { it.filter(Files::isRegularFile).count() })
     }
 
     @Test
@@ -60,6 +84,13 @@ class CourseResourceIntegrationTest : BaseIntegrationTest() {
                 jsonPath("$.code") { value(1005) }
                 jsonPath("$.details.url") { value("url must be a valid HTTP or HTTPS URL") }
             }
+
+        createFile(firstCourseId, "COURSE", "Invalid", "video.mp4", "video/mp4")
+            .andExpect {
+                status { isBadRequest() }
+                jsonPath("$.code") { value(1005) }
+                jsonPath("$.details.file") { value("file must be a supported PDF or audio file") }
+            }
     }
 
     private fun createLink(
@@ -81,6 +112,23 @@ class CourseResourceIntegrationTest : BaseIntegrationTest() {
                 "url":"https://example.com/material"
             }
             """.trimIndent()
+    }
+
+    private fun createFile(
+        courseId: Int,
+        scope: String,
+        title: String,
+        fileName: String,
+        contentType: String,
+        sectionId: Int? = null,
+        lessonId: Int? = null,
+    ) = mockMvc.multipart("/api/courses/$courseId/resources/files") {
+        file(MockMultipartFile("file", fileName, contentType, byteArrayOf(1, 2, 3)))
+        param("scope", scope)
+        param("title", title)
+        param("description", "Description")
+        sectionId?.let { param("sectionId", it.toString()) }
+        lessonId?.let { param("lessonId", it.toString()) }
     }
 
     private fun createCourse(name: String): Int {

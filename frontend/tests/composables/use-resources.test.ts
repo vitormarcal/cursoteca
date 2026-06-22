@@ -30,4 +30,27 @@ describe('useResources', () => {
       }
     })
   })
+
+  it('uploads a resource file as multipart data', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({})
+    vi.stubGlobal('$fetch', fetchMock)
+    const file = new File(['pdf'], 'material.pdf', { type: 'application/pdf' })
+
+    await useResources().createFile(42, {
+      scope: 'LESSON',
+      sectionId: null,
+      lessonId: 7,
+      title: ' Material ',
+      description: ' Notes ',
+      file
+    })
+
+    const options = fetchMock.mock.calls[0][1]
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/courses/42/resources/files')
+    expect(options.method).toBe('POST')
+    expect(options.body.get('scope')).toBe('LESSON')
+    expect(options.body.get('lessonId')).toBe('7')
+    expect(options.body.get('title')).toBe('Material')
+    expect(options.body.get('file')).toBe(file)
+  })
 })
